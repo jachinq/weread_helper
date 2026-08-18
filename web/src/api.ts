@@ -1,4 +1,11 @@
-import type { NotesResponse, NotebooksResponse, StatsResponse, SyncStatus, ShelfResponse } from './types'
+import type {
+  NotesResponse,
+  NotebooksResponse,
+  StatsResponse,
+  SyncStatus,
+  ShelfResponse,
+  RandomHighlightsResponse,
+} from './types'
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
@@ -8,6 +15,21 @@ async function getJson<T>(url: string): Promise<T> {
     throw new Error(msg)
   }
   return data as T
+}
+
+export function fetchRandomHighlights() {
+  return getJson<RandomHighlightsResponse>('/api/highlights/random')
+}
+
+export function refreshRandomHighlights() {
+  return fetch('/api/highlights/random', { method: 'POST' }).then(async (res) => {
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const msg = (data as { error?: string }).error || `请求失败 (${res.status})`
+      throw new Error(msg)
+    }
+    return data as RandomHighlightsResponse
+  })
 }
 
 export function fetchNotebooks(count = 40, lastSort?: number) {

@@ -56,6 +56,7 @@ onUnmounted(() => {
       </div>
       <div class="mast-actions">
         <nav>
+          <RouterLink to="/" :class="{ active: route.path === '/' }">首页</RouterLink>
           <RouterLink to="/notes" :class="{ active: route.path.startsWith('/notes') }">笔记</RouterLink>
           <RouterLink to="/shelf" :class="{ active: route.path.startsWith('/shelf') }">书架</RouterLink>
           <RouterLink to="/stats" :class="{ active: route.path.startsWith('/stats') }">统计</RouterLink>

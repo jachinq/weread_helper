@@ -89,6 +89,13 @@ type Highlight struct {
 	ColorStyle string
 }
 
+type RandomHighlight struct {
+	Highlight
+	Title  string
+	Author string
+	Cover  string
+}
+
 type Review struct {
 	ReviewID    string
 	BookID      string
@@ -371,6 +378,42 @@ func (s *Store) ListChapters(bookID string) ([]Chapter, error) {
 			return nil, err
 		}
 		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) RandomHighlights(limit int) ([]RandomHighlight, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+	if limit > 5 {
+		limit = 5
+	}
+	rows, err := s.DB.Query(`
+SELECT h.bookmark_id, h.book_id, h.chapter_uid, h.mark_text, h.create_time, h.range, h.color_style,
+       b.title, b.author, b.cover
+FROM highlights h
+JOIN books b ON b.book_id = h.book_id
+WHERE TRIM(h.mark_text) != ''
+ORDER BY RANDOM()
+LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []RandomHighlight
+	for rows.Next() {
+		var h RandomHighlight
+		if err := rows.Scan(
+			&h.BookmarkID, &h.BookID, &h.ChapterUID, &h.MarkText, &h.CreateTime, &h.Range, &h.ColorStyle,
+			&h.Title, &h.Author, &h.Cover,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, h)
+	}
+	if out == nil {
+		out = []RandomHighlight{}
 	}
 	return out, rows.Err()
 }

@@ -340,3 +340,221 @@ nav a:hover {
   margin-top: 28px;
   text-align: center;
 }
+
+.home-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.home-kicker {
+  margin: 0 0 4px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: var(--vermilion);
+  font-family: "IBM Plex Sans Condensed", "Helvetica Neue", sans-serif;
+}
+
+.home-redraw {
+  flex-shrink: 0;
+}
+
+.home-empty {
+  margin: 48px 0;
+  padding: 28px;
+  text-align: center;
+  border: 1px dashed var(--rule);
+  color: var(--ink-soft);
+  letter-spacing: 0.08em;
+}
+
+.home-spread {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+  margin-top: 28px;
+  align-items: start;
+}
+
+@media (min-width: 720px) {
+  .home-spread {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .home-spread[data-count="3"] .slip:last-child,
+  .home-spread[data-count="5"] .slip:last-child {
+    grid-column: 1 / -1;
+    max-width: 640px;
+    justify-self: center;
+    width: 100%;
+  }
+}
+
+.slip {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+  padding: 28px 26px 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 245, 0.96), rgba(247, 238, 220, 0.92));
+  border: 1px solid var(--ink);
+  box-shadow:
+    inset 0 0 0 5px rgba(243, 234, 216, 0.9),
+    inset 0 0 0 6px var(--gold),
+    8px 12px 0 rgba(28, 22, 16, 0.08);
+  animation: slip-in 0.7s ease both;
+  animation-delay: var(--delay, 0ms);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, translate 0.25s ease;
+}
+
+.slip-1 {
+  transform: rotate(-1.2deg);
+}
+
+.slip-2 {
+  transform: rotate(1.1deg);
+}
+
+.slip-3 {
+  transform: rotate(-0.6deg);
+}
+
+.slip-4 {
+  transform: rotate(0.9deg);
+}
+
+.slip-5 {
+  transform: rotate(-0.4deg);
+}
+
+.slip:hover {
+  transform: rotate(0deg) translateY(-4px);
+  box-shadow:
+    inset 0 0 0 5px rgba(243, 234, 216, 0.9),
+    inset 0 0 0 6px var(--vermilion),
+    10px 16px 0 rgba(28, 22, 16, 0.12);
+}
+
+.slip-cover {
+  position: absolute;
+  right: -12%;
+  bottom: -8%;
+  width: 58%;
+  height: 78%;
+  object-fit: cover;
+  opacity: 0.12;
+  filter: grayscale(0.35) sepia(0.25);
+  pointer-events: none;
+  z-index: 0;
+  mask-image: linear-gradient(135deg, transparent 20%, #000 70%);
+}
+
+.slip-seal {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--vermilion);
+  color: var(--vermilion);
+  font-size: 16px;
+  font-weight: 700;
+  transform: rotate(8deg);
+  opacity: 0.85;
+}
+
+.slip-quote {
+  position: relative;
+  z-index: 1;
+  margin: 8px 0 0;
+  padding: 0;
+  flex: 1;
+  font-size: 18px;
+  line-height: 1.85;
+  letter-spacing: 0.04em;
+  display: -webkit-box;
+  -webkit-line-clamp: 7;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.slip-quote::before {
+  content: "「";
+  color: var(--vermilion);
+  font-size: 28px;
+  line-height: 0;
+  margin-right: 2px;
+  vertical-align: -0.15em;
+}
+
+.slip-meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  font-family: "IBM Plex Sans Condensed", "Helvetica Neue", sans-serif;
+}
+
+.slip-meta cite {
+  display: block;
+  font-style: normal;
+  font-family: "Noto Serif SC", serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.slip-meta span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  letter-spacing: 0.12em;
+}
+
+.slip-meta time {
+  flex-shrink: 0;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+}
+
+@keyframes slip-in {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@media (max-width: 719px) {
+  .home-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .slip {
+    transform: none;
+    min-height: 240px;
+  }
+
+  .slip:hover {
+    transform: translateY(-3px);
+  }
+}

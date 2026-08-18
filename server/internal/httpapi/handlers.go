@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jachin/weread-helper/internal/conv"
@@ -15,8 +17,11 @@ import (
 )
 
 type Server struct {
-	store *store.Store
-	job   *syncjob.Job
+	store     *store.Store
+	job       *syncjob.Job
+	pickMu    sync.Mutex
+	pickDate  string
+	pickItems []store.RandomHighlight
 }
 
 func New(st *store.Store, job *syncjob.Job) *Server {
@@ -27,6 +32,8 @@ func (s *Server) Register(r *gin.Engine) {
 	api := r.Group("/api")
 	api.GET("/health", s.health)
 	api.GET("/notebooks", s.notebooks)
+	api.GET("/highlights/random", s.randomHighlights)
+	api.POST("/highlights/random", s.refreshHighlights)
 	api.GET("/books/:bookId", s.book)
 	api.GET("/books/:bookId/notes", s.notes)
 	api.GET("/stats", s.stats)
@@ -37,6 +44,53 @@ func (s *Server) Register(r *gin.Engine) {
 
 func (s *Server) health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (s *Server) randomHighlights(c *gin.Context) {
+	s.writePicks(c, false)
+}
+
+func (s *Server) refreshHighlights(c *gin.Context) {
+	s.writePicks(c, true)
+}
+
+func (s *Server) writePicks(c *gin.Context, refresh bool) {
+	items, date, err := s.todayPicks(refresh)
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	out := make([]gin.H, 0, len(items))
+	for _, h := range items {
+		out = append(out, gin.H{
+			"bookmarkId": h.BookmarkID,
+			"bookId":     h.BookID,
+			"markText":   h.MarkText,
+			"createTime": h.CreateTime,
+			"title":      h.Title,
+			"author":     h.Author,
+			"cover":      h.Cover,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"date": date, "items": out})
+}
+
+func (s *Server) todayPicks(refresh bool) ([]store.RandomHighlight, string, error) {
+	today := time.Now().Format("2006-01-02")
+	s.pickMu.Lock()
+	defer s.pickMu.Unlock()
+	if !refresh && s.pickDate == today && s.pickItems != nil {
+		return s.pickItems, today, nil
+	}
+	items, err := s.store.RandomHighlights(5)
+	if err != nil {
+		return nil, today, err
+	}
+	if refresh || len(items) > 0 {
+		s.pickDate = today
+		s.pickItems = items
+	}
+	return items, today, nil
 }
 
 func (s *Server) notebooks(c *gin.Context) {

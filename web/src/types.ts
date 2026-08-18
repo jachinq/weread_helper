@@ -93,3 +93,18 @@ export type ShelfResponse = {
   books?: ShelfBook[]
   bookCount?: number
 }
+
+export type RandomHighlight = {
+  bookmarkId: string
+  bookId: string
+  markText: string
+  createTime: number
+  title: string
+  author: string
+  cover: string
+}
+
+export type RandomHighlightsResponse = {
+  date?: string
+  items: RandomHighlight[]
+}

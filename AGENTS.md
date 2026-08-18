@@ -2,7 +2,7 @@
 
 个人自用的微信读书笔记与阅读统计工具。前后端分离：Go BFF 持有 API Key，前端只请求本服务 `/api`，不直连微信读书。
 
-凭证来自 [微信读书 Skills API Key](https://weread.qq.com/r/weread-skills)，写入 `server/.env` 的 `WEREAD_API_KEY`。官方接口说明见仓库根目录 `微信读书API.md`（Gateway `skill_version` 当前为 `1.0.4`）。
+凭证来自 [微信读书 Skills API Key](https://weread.qq.com/r/weread-skills)，写入 `server/.env` 的 `WEREAD_API_KEY`。官方接口说明见仓库根目录 `docs/weread_API.md`（Gateway `skill_version` 当前为 `1.0.4`）。
 
 ## 当前已实现
 
@@ -18,6 +18,13 @@
 - 有笔记的书列表：封面、书名、作者、划线数、想法数、阅读进度；`lastSort` 游标分页，支持「加载更多」。
 - 单本书笔记详情：按章节分组展示划线原文（`markText`）与想法（`abstract` + `content`）。
 - 前端路由：`/notes`、`/notes/:bookId`。
+
+### 首页摘抄
+
+- 服务端按本地日期缓存当日 5 条划线（进程内存）；当日首次 GET 自动抽取，之后返回同一批。
+- 「换一批」走 POST 覆盖当日缓存。进程重启后会重新抽。
+- 前端按屏宽从这 5 条里展示 3 / 4 / 5 张藏书票（原文、书名、作者、划线日期）。
+- 前端路由：`/`。
 
 ### 阅读统计
 
@@ -37,6 +44,8 @@
 |------|------|------|
 | GET | `/api/health` | 健康检查 |
 | GET | `/api/notebooks?count=&lastSort=` | 有笔记的书（本地） |
+| GET | `/api/highlights/random` | 当日摘抄（无缓存则抽 5 条写入内存） |
+| POST | `/api/highlights/random` | 换一批，覆盖当日内存缓存 |
 | GET | `/api/books/:bookId` | 书籍信息 + 阅读进度（本地） |
 | GET | `/api/books/:bookId/notes` | 聚合章节、划线、想法（本地） |
 | GET | `/api/stats?mode=` | 阅读统计快照（本地） |
@@ -76,7 +85,7 @@ web (Vite :5173)  --/api-->  server (Gin :8080 + SQLite)  --Bearer wrk-*-->  i.w
 - `server/internal/syncjob`：增量同步
 - `server/internal/httpapi`：BFF 路由与笔记聚合
 - `server/internal/config`：环境变量
-- `web/src/views`：`NotesList.vue`、`NoteDetail.vue`、`StatsView.vue`、`ShelfView.vue`
+- `web/src/views`：`HomeView.vue`、`NotesList.vue`、`NoteDetail.vue`、`StatsView.vue`、`ShelfView.vue`
 - `web/src/api.ts`：前端请求封装
 
 ## 本地运行
