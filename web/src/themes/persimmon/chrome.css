@@ -1,0 +1,35 @@
+html[data-theme="persimmon"] .seal {
+  transform: rotate(-14deg);
+  border-radius: 4px;
+  box-shadow: 6px 7px 0 color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+html[data-theme="persimmon"] .masthead {
+  border-bottom-width: 3px;
+  border-bottom-color: var(--color-accent);
+}
+
+html[data-theme="persimmon"] .masthead h1 {
+  letter-spacing: 0.16em;
+}
+
+html[data-theme="persimmon"] .site-nav a.active,
+html[data-theme="persimmon"] .site-nav a:hover {
+  border-bottom-width: 4px;
+}
+
+html[data-theme="persimmon"] .card:hover {
+  transform: translateY(-6px) rotate(-1.2deg);
+}
+
+html[data-theme="persimmon"] .card::after {
+  width: 5px;
+}
+
+html[data-theme="persimmon"] .btn {
+  letter-spacing: 0.16em;
+}
+
+html[data-theme="persimmon"] .slip {
+  transform: rotate(var(--slip-rot, 0deg)) translate(var(--slip-x, 0px), var(--slip-y, 0px));
+}

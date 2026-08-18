@@ -252,6 +252,7 @@ a {
   color: var(--cream);
   font-family: var(--font-ui);
   font-size: 15px;
+  border-radius: var(--radius);
 }
 
 .search::placeholder {
@@ -274,6 +275,7 @@ a {
   font-family: var(--font-ui);
   letter-spacing: 0.08em;
   cursor: pointer;
+  border-radius: var(--radius);
 }
 
 .chip[aria-pressed="true"],
@@ -395,6 +397,7 @@ a {
   cursor: pointer;
   font-family: var(--font-ui);
   letter-spacing: 0.14em;
+  border-radius: var(--radius);
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 
@@ -744,6 +747,7 @@ a {
   font: inherit;
   cursor: pointer;
   appearance: none;
+  border-radius: var(--radius);
 }
 
 .hero-cover {
@@ -1127,6 +1131,7 @@ a {
   padding: 28px 26px 20px;
   border: 0;
   appearance: none;
+  border-radius: var(--radius);
   font: inherit;
   text-align: left;
   background:
@@ -1748,6 +1753,7 @@ body.slip-lightbox-lock {
   padding: 16px 16px 18px;
   border: 1px solid var(--rule);
   background: var(--walnut-lift);
+  border-radius: var(--radius);
 }
 
 .settings-form legend {
@@ -1776,6 +1782,7 @@ body.slip-lightbox-lock {
   color: var(--cream);
   font-family: var(--font-ui);
   font-size: 15px;
+  border-radius: var(--radius);
 }
 
 .settings-form input::placeholder {
@@ -1819,6 +1826,7 @@ body.slip-lightbox-lock {
   letter-spacing: 0.06em;
   text-align: left;
   cursor: pointer;
+  border-radius: var(--radius);
 }
 
 .theme-swatch.active {

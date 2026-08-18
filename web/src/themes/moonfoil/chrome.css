@@ -1,0 +1,48 @@
+html[data-theme="moonfoil"] .seal {
+  transform: none;
+  border-radius: 50%;
+  border-width: 1px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent),
+    0 12px 30px color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+html[data-theme="moonfoil"] .masthead {
+  border-bottom: 0;
+  box-shadow:
+    0 1px 0 var(--color-border),
+    0 2px 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+html[data-theme="moonfoil"] .masthead h1 {
+  letter-spacing: 0.18em;
+  font-weight: 500;
+}
+
+html[data-theme="moonfoil"] .site-nav a {
+  border-bottom-width: 1px;
+  letter-spacing: 0.2em;
+}
+
+html[data-theme="moonfoil"] .card::after {
+  display: none;
+}
+
+html[data-theme="moonfoil"] .card {
+  box-shadow:
+    var(--shadow-page),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+html[data-theme="moonfoil"] .card:hover {
+  transform: translateY(-6px);
+}
+
+html[data-theme="moonfoil"] .banner {
+  border-style: solid;
+  backdrop-filter: blur(8px);
+}
+
+html[data-theme="moonfoil"] .slip {
+  border-radius: calc(var(--radius) + 4px);
+}

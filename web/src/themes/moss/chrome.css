@@ -1,0 +1,44 @@
+html[data-theme="moss"] .seal {
+  transform: rotate(4deg);
+  border-radius: 40% 60% 45% 55% / 50% 40% 60% 50%;
+  border-style: dashed;
+  box-shadow: none;
+}
+
+html[data-theme="moss"] .masthead {
+  border-bottom-style: dashed;
+  align-items: center;
+}
+
+html[data-theme="moss"] .masthead h1 {
+  letter-spacing: 0.08em;
+}
+
+html[data-theme="moss"] .site-nav a {
+  border-radius: 18px 6px 18px 6px;
+  border-bottom: 0;
+  letter-spacing: 0.1em;
+}
+
+html[data-theme="moss"] .site-nav a.active,
+html[data-theme="moss"] .site-nav a:hover {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-bottom-color: transparent;
+}
+
+html[data-theme="moss"] .site-nav.dock a.active,
+html[data-theme="moss"] .site-nav.dock a:hover {
+  background: transparent;
+}
+
+html[data-theme="moss"] .card {
+  border-style: dashed;
+}
+
+html[data-theme="moss"] .card:hover {
+  transform: translateY(-5px) rotate(0.4deg);
+}
+
+html[data-theme="moss"] .banner {
+  border-radius: 20px 4px 20px 4px;
+}

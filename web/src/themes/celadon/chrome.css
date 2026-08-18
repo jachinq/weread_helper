@@ -1,0 +1,53 @@
+html[data-theme="celadon"] .seal {
+  transform: none;
+  border-radius: 50%;
+  border-width: 2px;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+html[data-theme="celadon"] .masthead {
+  align-items: center;
+  border-bottom-style: dotted;
+}
+
+html[data-theme="celadon"] .masthead h1 {
+  letter-spacing: 0.12em;
+  font-weight: 500;
+}
+
+html[data-theme="celadon"] .kicker {
+  letter-spacing: 0.28em;
+}
+
+html[data-theme="celadon"] .site-nav a {
+  border-bottom: 0;
+  border-radius: 999px;
+  letter-spacing: 0.12em;
+}
+
+html[data-theme="celadon"] .site-nav a.active,
+html[data-theme="celadon"] .site-nav a:hover {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  border-bottom-color: transparent;
+}
+
+html[data-theme="celadon"] .site-nav.dock a.active,
+html[data-theme="celadon"] .site-nav.dock a:hover {
+  background: transparent;
+}
+
+html[data-theme="celadon"] .card::after {
+  width: 2px;
+  opacity: 0.4;
+}
+
+html[data-theme="celadon"] .card:hover {
+  transform: translateY(-3px);
+}
+
+html[data-theme="celadon"] .banner {
+  border-style: dotted;
+  border-radius: 999px;
+}

@@ -20,6 +20,7 @@ export type ThemeMeta = {
   id: ThemeId
   label: string
   kicker: string
+  /** L3 骨架 id；换导航结构时新增 layout 与 Shell */
   layout: LayoutId
   hasLamp: boolean
   fonts: {

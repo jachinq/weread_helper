@@ -1,0 +1,40 @@
+html[data-theme="cinnabar"] .masthead {
+  border-bottom: 0;
+  box-shadow: inset 7px 0 0 var(--color-accent);
+  padding-left: 18px;
+}
+
+html[data-theme="cinnabar"] .seal {
+  transform: none;
+  border-radius: 0;
+  border-width: 2px;
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--color-accent) 55%, transparent),
+    inset 0 0 0 3px color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+html[data-theme="cinnabar"] .masthead h1 {
+  letter-spacing: 0.28em;
+}
+
+html[data-theme="cinnabar"] .site-nav a {
+  letter-spacing: 0.22em;
+}
+
+html[data-theme="cinnabar"] .site-nav a.active,
+html[data-theme="cinnabar"] .site-nav a:hover {
+  border-bottom-width: 3px;
+}
+
+html[data-theme="cinnabar"] .card::after {
+  width: 6px;
+}
+
+html[data-theme="cinnabar"] .btn-solid {
+  letter-spacing: 0.2em;
+}
+
+html[data-theme="cinnabar"] .colophon {
+  border-top-width: 2px;
+  border-top-color: var(--color-accent);
+}

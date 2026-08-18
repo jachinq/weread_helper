@@ -1,0 +1,12 @@
+/* 默认气质已在 style.css；此处只钉住胡桃特有的印章与字距 */
+html[data-theme="walnut"] .seal {
+  transform: rotate(-7deg);
+}
+
+html[data-theme="walnut"] .masthead h1 {
+  letter-spacing: 0.22em;
+}
+
+html[data-theme="walnut"] .card:hover {
+  transform: translateY(-4px) rotate(-0.3deg);
+}
