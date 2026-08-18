@@ -20,6 +20,13 @@ settings.key
 web/node_modules/
 web/dist/
 
+# desktop (Tauri)
+desktop/node_modules/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+desktop/src-tauri/binaries/*.exe
+desktop/src-tauri/resources/web/
+
 # ide
 .idea/
 .vscode/

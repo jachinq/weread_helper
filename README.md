@@ -32,6 +32,30 @@ pnpm run dev
 
 浏览器打开 `http://127.0.0.1:5173`。
 
+## Windows 桌面（Tauri 2 便携）
+
+代码在仓库根目录 [`desktop/`](desktop/)。壳程序启动时拉起 Go sidecar（只监听 `127.0.0.1` 随机端口），退出壳或托盘「退出」时结束 sidecar。SQLite、`settings.key`、WebView 缓存写在 **exe 同级 `data/`**，不使用用户文档/默认 AppData（WebView2 Runtime 仍由系统安装）。
+
+依赖：Rust、Go、pnpm、本机 WebView2。
+
+```bash
+cd desktop
+pnpm install
+pnpm run sidecar
+pnpm run dev
+```
+
+打包 NSIS 安装器（默认每用户安装，目录可写；也可把构建产物整夹拷走当便携包）：
+
+```bash
+cd desktop
+pnpm run build
+```
+
+产物一般在 `desktop/src-tauri/target/release/bundle/nsis/`。便携使用时请保持 exe、sidecar（`weread-helper.exe`）与 `resources/web` 相对位置，数据在同目录 `data/`。
+
+托盘菜单：显示主窗口、开机自启、退出。关闭窗口会隐藏到托盘。开机自启写入当前用户 Run 项（指向当时的 exe 绝对路径，移动文件夹后需重新勾选）。
+
 ## Docker 部署
 
 镜像为多阶段构建：Node 打前端、Go 静态编译后端（`CGO_ENABLED=0` + 去符号），最终仅保留 Alpine 运行层（CA 证书、时区、`su-exec`）。容器内由同一进程提供 `/api` 与前端静态文件。SQLite 与加密密钥文件写在数据卷 `/data`。

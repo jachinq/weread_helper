@@ -1,0 +1,26 @@
+[package]
+name = "weread-helper-desktop"
+version = "0.1.0"
+description = "微信读书助手桌面壳"
+authors = ["jachin"]
+edition = "2021"
+
+[lib]
+name = "weread_helper_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-single-instance = "2"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

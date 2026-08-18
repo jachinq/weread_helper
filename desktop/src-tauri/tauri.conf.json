@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "微信读书助手",
+  "version": "0.1.0",
+  "identifier": "com.jachin.weread-helper",
+  "build": {
+    "frontendDist": "../splash",
+    "beforeDevCommand": "powershell -ExecutionPolicy Bypass -File ./scripts/build-sidecar.ps1",
+    "beforeBuildCommand": "powershell -ExecutionPolicy Bypass -File ./scripts/build-sidecar.ps1"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico",
+      "icons/icon.png"
+    ],
+    "externalBin": ["binaries/weread-helper"],
+    "resources": {
+      "resources/web": "web"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  }
+}

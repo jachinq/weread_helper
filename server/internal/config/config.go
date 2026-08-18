@@ -32,7 +32,7 @@ func Load() Config {
 	cfg := Config{
 		APIKey:       os.Getenv("WEREAD_API_KEY"),
 		SkillVersion: getenv("SKILL_VERSION", "1.0.4"),
-		ListenAddr:   getenv("LISTEN_ADDR", ":8080"),
+		ListenAddr:   getenv("LISTEN_ADDR", ":8080"), // 桌面 sidecar 传入 127.0.0.1:<port>
 		GatewayURL:   getenv("GATEWAY_URL", "https://i.weread.qq.com/api/agent/gateway"),
 		DatabasePath: getenv("DATABASE_PATH", filepath.Join("data", "weread.db")),
 		WebDir:       os.Getenv("WEB_DIR"),
