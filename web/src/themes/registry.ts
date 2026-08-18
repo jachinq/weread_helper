@@ -56,7 +56,7 @@ export const THEMES: ThemeMeta[] = [
     id: 'inknight',
     label: '夜航墨水',
     kicker: 'Night passage',
-    layout: 'classic',
+    layout: 'sidebar',
     hasLamp: true,
     fonts: {
       display: '"Source Serif 4", "Noto Serif SC", serif',
@@ -88,7 +88,7 @@ export const THEMES: ThemeMeta[] = [
     id: 'moonfoil',
     label: '月光银箔',
     kicker: 'Moonfoil',
-    layout: 'classic',
+    layout: 'sidebar',
     hasLamp: true,
     fonts: {
       display: '"Cormorant Garamond", "Noto Serif SC", serif',
@@ -120,7 +120,7 @@ export const THEMES: ThemeMeta[] = [
     id: 'letterpress',
     label: '铅字排印',
     kicker: 'Letterpress',
-    layout: 'classic',
+    layout: 'sidebar',
     hasLamp: false,
     fonts: {
       display: '"IBM Plex Mono", "Noto Serif SC", monospace',

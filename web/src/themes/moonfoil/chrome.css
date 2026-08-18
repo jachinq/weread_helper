@@ -7,21 +7,25 @@ html[data-theme="moonfoil"] .seal {
     0 12px 30px color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
-html[data-theme="moonfoil"] .masthead {
+html[data-theme="moonfoil"][data-layout="classic"] .masthead {
   border-bottom: 0;
   box-shadow:
     0 1px 0 var(--color-border),
     0 2px 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
-html[data-theme="moonfoil"] .masthead h1 {
+html[data-theme="moonfoil"][data-layout="classic"] .masthead h1 {
   letter-spacing: 0.18em;
   font-weight: 500;
 }
 
-html[data-theme="moonfoil"] .site-nav a {
+html[data-theme="moonfoil"][data-layout="classic"] .site-nav a {
   border-bottom-width: 1px;
   letter-spacing: 0.2em;
+}
+
+html[data-theme="moonfoil"][data-layout="sidebar"] .rail {
+  border-right-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
 }
 
 html[data-theme="moonfoil"] .card::after {

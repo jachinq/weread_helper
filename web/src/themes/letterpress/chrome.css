@@ -5,7 +5,11 @@ html[data-theme="letterpress"] .seal {
   border-width: 2px;
 }
 
-html[data-theme="letterpress"] .masthead {
+html[data-theme="letterpress"] .kicker {
+  letter-spacing: 0.08em;
+}
+
+html[data-theme="letterpress"][data-layout="classic"] .masthead {
   border-bottom: 0;
   box-shadow:
     0 1px 0 var(--color-text),
@@ -13,22 +17,18 @@ html[data-theme="letterpress"] .masthead {
   padding-bottom: 16px;
 }
 
-html[data-theme="letterpress"] .masthead h1 {
+html[data-theme="letterpress"][data-layout="classic"] .masthead h1 {
   letter-spacing: 0;
   text-transform: uppercase;
   font-weight: 600;
 }
 
-html[data-theme="letterpress"] .kicker {
-  letter-spacing: 0.08em;
-}
-
-html[data-theme="letterpress"] .site-nav:not(.dock) {
+html[data-theme="letterpress"][data-layout="classic"] .site-nav:not(.dock) {
   gap: 0;
   border: 1px solid var(--color-text);
 }
 
-html[data-theme="letterpress"] .site-nav:not(.dock) a {
+html[data-theme="letterpress"][data-layout="classic"] .site-nav:not(.dock) a {
   border: 0;
   border-right: 1px solid var(--color-text);
   border-bottom: 0;
@@ -40,15 +40,31 @@ html[data-theme="letterpress"] .site-nav:not(.dock) a {
   padding: 6px 10px;
 }
 
-html[data-theme="letterpress"] .site-nav:not(.dock) a:last-child {
+html[data-theme="letterpress"][data-layout="classic"] .site-nav:not(.dock) a:last-child {
   border-right: 0;
 }
 
-html[data-theme="letterpress"] .site-nav:not(.dock) a.active,
-html[data-theme="letterpress"] .site-nav:not(.dock) a:hover {
+html[data-theme="letterpress"][data-layout="classic"] .site-nav:not(.dock) a.active,
+html[data-theme="letterpress"][data-layout="classic"] .site-nav:not(.dock) a:hover {
   background: var(--color-text);
   color: var(--color-bg);
   border-bottom-color: transparent;
+}
+
+html[data-theme="letterpress"][data-layout="sidebar"] .rail {
+  border-right: 2px solid var(--color-text);
+}
+
+html[data-theme="letterpress"][data-layout="sidebar"] .rail h1 {
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+html[data-theme="letterpress"][data-layout="sidebar"] .rail-nav a {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 12px;
+  border-left-width: 3px;
 }
 
 html[data-theme="letterpress"] .card {

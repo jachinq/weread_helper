@@ -1447,25 +1447,36 @@ body.slip-lightbox-lock {
 }
 
 .shelf-grid {
+  --shelf-cover: 128px;
+  --shelf-title: 28px; /* 10px gap + 18px line */
+  --shelf-author: 20px; /* 4px gap + 16px line */
+  --shelf-progress: 30px; /* 8px gap + 22px chip */
+  --shelf-item-h: calc(var(--shelf-cover) + var(--shelf-title) + var(--shelf-author) + var(--shelf-progress));
+  --shelf-row-gap: 28px;
+  --shelf-plank: 14px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 28px 16px;
-  padding: 28px 8px 8px;
-  background:
-    linear-gradient(180deg, transparent 0, transparent calc(100% - 14px), var(--slip-edge-a) calc(100% - 14px), var(--slip-edge-b) 100%),
-    repeating-linear-gradient(
-      180deg,
-      transparent,
-      transparent 210px,
-      var(--slip-edge-a) 210px,
-      var(--slip-edge-b) 224px
-    );
+  grid-auto-rows: var(--shelf-item-h);
+  gap: var(--shelf-row-gap) 16px;
+  padding: var(--shelf-row-gap) 8px var(--shelf-plank);
+  background-origin: content-box;
+  background-clip: padding-box;
+  /* background-image: repeating-linear-gradient( 
+    180deg,
+    transparent 0,
+    transparent var(--shelf-item-h),
+    var(--slip-edge-a) var(--shelf-item-h),
+    var(--slip-edge-b) calc(var(--shelf-item-h) + var(--shelf-plank)),
+    transparent calc(var(--shelf-item-h) + var(--shelf-plank)),
+    transparent calc(var(--shelf-item-h) + var(--shelf-row-gap))
+  ); */
 }
 
 .spine {
   display: flex;
   flex-direction: column;
   align-items: center;
+  height: 100%;
   text-align: center;
   color: var(--cream);
   cursor: pointer;
@@ -1479,22 +1490,46 @@ body.slip-lightbox-lock {
 .spine img,
 .spine .cover {
   width: 92px;
-  height: 128px;
+  height: var(--shelf-cover);
+  flex: 0 0 var(--shelf-cover);
   box-shadow: 6px 10px 18px rgba(0, 0, 0, 0.35);
+}
+
+.spine h3,
+.spine .meta {
+  width: 100%;
+  max-width: 120px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .spine h3 {
   margin: 10px 0 0;
   font-size: 13px;
-  line-height: 1.35;
-  max-width: 120px;
+  line-height: 18px;
 }
 
 .spine .meta {
+  margin: 4px 0 0;
+  line-height: 16px;
   color: var(--color-text-muted);
 }
 
+.spine .counts {
+  flex-wrap: nowrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+
 .spine .counts span {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 6px;
+  line-height: 16px;
   border-color: color-mix(in srgb, var(--color-accent-2) 28%, transparent);
   color: var(--color-nav);
 }
@@ -1845,6 +1880,15 @@ body.slip-lightbox-lock {
   width: 16px;
   height: 16px;
   border: 1px solid var(--color-border);
+}
+
+.theme-layout {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
 }
 
 .scheme-toggle {

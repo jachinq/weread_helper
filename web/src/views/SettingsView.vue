@@ -149,6 +149,7 @@ onMounted(load)
               <i :style="{ background: preview(t.id, colorScheme)[2] }" />
             </span>
             {{ t.label }}
+            <span class="theme-layout">{{ t.layout === 'sidebar' ? '侧栏' : '顶栏' }}</span>
           </button>
         </div>
 

@@ -81,8 +81,8 @@ onMounted(load)
           @error="broken[b.bookId] = true"
         />
         <div v-else class="cover" aria-hidden="true">书</div>
-        <h3>{{ b.title || '未命名' }}</h3>
-        <p class="meta">{{ b.author }}</p>
+        <h3 :title="b.title || '未命名'">{{ b.title || '未命名' }}</h3>
+        <p class="meta" :title="b.author">{{ b.author }}</p>
         <div class="counts">
           <span v-if="b.isTop">置顶</span>
           <span v-if="b.finishReading">读完</span>

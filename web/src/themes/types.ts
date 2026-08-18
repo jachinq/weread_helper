@@ -1,5 +1,5 @@
 export type ColorScheme = 'light' | 'dark'
-export type LayoutId = 'classic'
+export type LayoutId = 'classic' | 'sidebar'
 
 export type ThemeId =
   | 'walnut'
