@@ -7,6 +7,10 @@ import ShelfView from './views/ShelfView.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
+  scrollBehavior(_to, _from, saved) {
+    if (saved) return saved
+    return { top: 0 }
+  },
   routes: [
     { path: '/', component: HomeView, meta: { title: '首页' } },
     { path: '/notes', component: NotesList, meta: { title: '笔记' } },
@@ -14,4 +18,9 @@ export const router = createRouter({
     { path: '/stats', component: StatsView, meta: { title: '阅读统计' } },
     { path: '/shelf', component: ShelfView, meta: { title: '书架' } },
   ],
+})
+
+router.afterEach((to) => {
+  const page = typeof to.meta.title === 'string' ? to.meta.title : ''
+  document.title = page ? `${page} · 纸间笔记` : '纸间笔记 · 微信读书助手'
 })

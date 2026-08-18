@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { fetchRandomHighlights, refreshRandomHighlights } from '../api'
 import type { RandomHighlight } from '../types'
 
@@ -62,25 +63,33 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="home">
+  <section class="home" :aria-busy="loading">
     <header class="home-head">
       <div>
         <p class="home-kicker">Commonplace · 抽签</p>
         <h2 class="page-title">今日摘抄</h2>
         <p class="muted">从历史划线里随手抽出几张藏书票</p>
       </div>
-      <button class="btn home-redraw" :disabled="loading" @click="load(true)">
+      <button class="btn home-redraw" type="button" :disabled="loading" @click="load(true)">
         {{ loading ? '抽取中…' : '换一批' }}
       </button>
     </header>
 
-    <div v-if="error" class="error">{{ error }}</div>
+    <div v-if="error" class="error" role="alert">{{ error }}</div>
 
-    <p v-else-if="!loading && !items.length" class="home-empty">
-      还没有划线。先去同步，再回来抽一张纸。
+    <div v-else-if="loading && !items.length" class="home-spread" data-count="3" aria-hidden="true">
+      <div v-for="n in 3" :key="n" class="slip skeleton" :class="'slip-' + n">
+        <div class="line" />
+        <div class="line" />
+        <div class="line short" />
+      </div>
+    </div>
+
+    <p v-else-if="!items.length" class="home-empty">
+      还没有划线。先同步书架与笔记，再回来抽一张纸。
     </p>
 
-    <div v-else-if="items.length" class="home-spread" :key="drawKey" :data-count="items.length">
+    <div v-else class="home-spread" :key="drawKey" :data-count="items.length">
       <RouterLink
         v-for="(h, i) in items"
         :key="h.bookmarkId"
@@ -88,9 +97,10 @@ onUnmounted(() => {
         :class="'slip-' + ((i % 5) + 1)"
         :style="{ '--delay': i * 90 + 'ms' }"
         :to="`/notes/${h.bookId}`"
+        :aria-label="`查看《${h.title || '未命名'}》的笔记`"
       >
-        <span class="slip-seal">摘</span>
-        <img v-if="h.cover" class="slip-cover" :src="h.cover" alt="" />
+        <span class="slip-seal" aria-hidden="true">摘</span>
+        <img v-if="h.cover" class="slip-cover" :src="h.cover" alt="" loading="lazy" />
         <blockquote class="slip-quote">{{ h.markText }}</blockquote>
         <footer class="slip-meta">
           <div>

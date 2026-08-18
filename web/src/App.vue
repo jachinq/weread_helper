@@ -16,6 +16,11 @@ function formatTime(ts: number) {
   return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function navClass(path: string, prefix?: boolean) {
+  const active = prefix ? route.path.startsWith(path) : route.path === path
+  return { active }
+}
+
 async function refreshStatus() {
   try {
     status.value = await fetchSyncStatus()
@@ -46,26 +51,41 @@ onUnmounted(() => {
 
 <template>
   <div class="shell">
+    <a class="skip-link" href="#main">跳到正文</a>
     <header class="masthead">
-      <div class="brand">
-        <span class="seal">读</span>
+      <RouterLink class="brand" to="/" aria-label="纸间笔记首页">
+        <span class="seal" aria-hidden="true">读</span>
         <div>
           <p class="kicker">WeRead Companion</p>
           <h1>纸间笔记</h1>
         </div>
-      </div>
+      </RouterLink>
       <div class="mast-actions">
-        <nav>
-          <RouterLink to="/" :class="{ active: route.path === '/' }">首页</RouterLink>
-          <RouterLink to="/notes" :class="{ active: route.path.startsWith('/notes') }">笔记</RouterLink>
-          <RouterLink to="/shelf" :class="{ active: route.path.startsWith('/shelf') }">书架</RouterLink>
-          <RouterLink to="/stats" :class="{ active: route.path.startsWith('/stats') }">统计</RouterLink>
+        <nav class="site-nav" aria-label="主导航">
+          <RouterLink to="/" :class="navClass('/')" :aria-current="route.path === '/' ? 'page' : undefined">首页</RouterLink>
+          <RouterLink
+            to="/notes"
+            :class="navClass('/notes', true)"
+            :aria-current="route.path.startsWith('/notes') ? 'page' : undefined"
+          >笔记</RouterLink>
+          <RouterLink
+            to="/shelf"
+            :class="navClass('/shelf', true)"
+            :aria-current="route.path.startsWith('/shelf') ? 'page' : undefined"
+          >书架</RouterLink>
+          <RouterLink
+            to="/stats"
+            :class="navClass('/stats', true)"
+            :aria-current="route.path.startsWith('/stats') ? 'page' : undefined"
+          >统计</RouterLink>
         </nav>
         <div class="sync-box">
           <span class="sync-meta">{{ formatTime(status?.lastOkAt || 0) }}</span>
           <button
             class="btn"
+            type="button"
             :disabled="status?.state === 'running' || syncingClick"
+            :aria-busy="status?.state === 'running' || syncingClick"
             @click="onSync"
           >
             {{ status?.state === 'running' || syncingClick ? '同步中…' : '同步' }}
@@ -73,16 +93,34 @@ onUnmounted(() => {
         </div>
       </div>
     </header>
-    <p v-if="status?.state === 'running'" class="banner">
+    <p v-if="status?.state === 'running'" class="banner" role="status" aria-live="polite">
       同步中
       <template v-if="status.phase"> · {{ status.phase }}</template>
       <template v-if="status.dirtyTotal"> · {{ status.dirtyDone }}/{{ status.dirtyTotal }} 本书</template>
       <template v-if="status.elapsedSec"> · 已用 {{ status.elapsedSec }}s</template>
     </p>
-    <p v-if="status?.lastError" class="error">上次同步：{{ status.lastError }}</p>
-    <main>
+    <p v-if="status?.lastError" class="error" role="alert">上次同步：{{ status.lastError }}</p>
+    <main id="main" tabindex="-1">
       <RouterView />
     </main>
     <footer class="colophon">个人助手 · 列表与详情读本地库，同步时才请求官方接口</footer>
+    <nav class="site-nav dock" aria-label="移动端导航">
+      <RouterLink to="/" :class="navClass('/')" :aria-current="route.path === '/' ? 'page' : undefined">首页</RouterLink>
+      <RouterLink
+        to="/notes"
+        :class="navClass('/notes', true)"
+        :aria-current="route.path.startsWith('/notes') ? 'page' : undefined"
+      >笔记</RouterLink>
+      <RouterLink
+        to="/shelf"
+        :class="navClass('/shelf', true)"
+        :aria-current="route.path.startsWith('/shelf') ? 'page' : undefined"
+      >书架</RouterLink>
+      <RouterLink
+        to="/stats"
+        :class="navClass('/stats', true)"
+        :aria-current="route.path.startsWith('/stats') ? 'page' : undefined"
+      >统计</RouterLink>
+    </nav>
   </div>
 </template>

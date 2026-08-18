@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { BarChart, LineChart } from 'echarts/charts'
+import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { fetchStats } from '../api'
 import type { StatsResponse } from '../types'
 
-use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent])
+use([CanvasRenderer, BarChart, GridComponent, TooltipComponent])
 
 const modes = [
   { id: 'weekly', label: '本周' },
@@ -17,10 +18,23 @@ const modes = [
   { id: 'overall', label: '累计' },
 ] as const
 
-const mode = ref<(typeof modes)[number]['id']>('monthly')
+type ModeId = (typeof modes)[number]['id']
+
+const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const stats = ref<StatsResponse | null>(null)
+
+const mode = computed<ModeId>(() => {
+  const q = String(route.query.mode || 'monthly')
+  return modes.some((m) => m.id === q) ? (q as ModeId) : 'monthly'
+})
+
+function setMode(id: ModeId) {
+  if (id === mode.value) return
+  router.replace({ query: { ...route.query, mode: id } })
+}
 
 function asNum(v: unknown) {
   if (typeof v === 'number') return v
@@ -59,23 +73,23 @@ const daily = computed(() => dailySeries(stats.value?.dailyReadTimes))
 const chartOption = computed(() => {
   const { names, minutes } = daily.value
   return {
-    color: ['#b3392b'],
+    color: ['#92400e'],
     tooltip: { trigger: 'axis' },
     grid: { left: 40, right: 16, top: 24, bottom: 32 },
     xAxis: {
       type: 'category',
       data: names,
-      axisLine: { lineStyle: { color: '#5a5046' } },
-      axisLabel: { color: '#5a5046' },
+      axisLine: { lineStyle: { color: '#475569' } },
+      axisLabel: { color: '#475569' },
     },
     yAxis: {
       type: 'value',
       name: '分钟',
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: '#c9b89a', type: 'dashed' } },
-      axisLabel: { color: '#5a5046' },
+      splitLine: { lineStyle: { color: '#d6cbb4', type: 'dashed' } },
+      axisLabel: { color: '#475569' },
     },
-    series: [{ type: 'bar', data: minutes, barMaxWidth: 18 }],
+    series: [{ type: 'bar', data: minutes, barMaxWidth: 18, name: '阅读分钟' }],
   }
 })
 
@@ -112,21 +126,23 @@ onMounted(load)
 </script>
 
 <template>
-  <section>
+  <section :aria-busy="loading">
     <h2 class="page-title">阅读统计</h2>
     <p class="muted">时长按秒换算，数据来自本地快照。</p>
-    <div class="modes">
+    <div class="modes" role="group" aria-label="统计周期">
       <button
         v-for="m in modes"
         :key="m.id"
         class="btn"
+        type="button"
+        :aria-pressed="mode === m.id"
         :class="{ active: mode === m.id }"
-        @click="mode = m.id"
+        @click="setMode(m.id)"
       >
         {{ m.label }}
       </button>
     </div>
-    <div v-if="error" class="error">{{ error }}</div>
+    <div v-if="error" class="error" role="alert">{{ error }}</div>
     <p v-if="loading" class="muted">正在汇总…</p>
     <template v-else-if="stats">
       <div class="stats-row">
@@ -145,6 +161,21 @@ onMounted(load)
       </div>
       <div v-if="daily.names.length" class="chart">
         <VChart :option="chartOption" autoresize />
+        <table class="sr-only">
+          <caption>每日阅读分钟</caption>
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>分钟</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(name, i) in daily.names" :key="name + i">
+              <td>{{ name }}</td>
+              <td>{{ daily.minutes[i] }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       <div v-if="preferCats.length">
         <h3 class="page-title">偏好分类</h3>
