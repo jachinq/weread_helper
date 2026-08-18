@@ -46,11 +46,25 @@ WEREAD_API_KEY=wrk-xxxxxxxx
 # SETTINGS_ENCRYPT_KEY=
 ```
 
+构建默认走国内镜像：Alpine apk（阿里云）、npm/pnpm（npmmirror）、Go modules（goproxy.cn）。直接 `docker build` 同样使用这些默认值。
+
 启动：
 
 ```bash
 docker compose up -d --build
 ```
+
+切回官方源（海外或镜像异常时）：
+
+```bash
+docker compose build \
+  --build-arg ALPINE_MIRROR=https://dl-cdn.alpinelinux.org/alpine \
+  --build-arg NPM_REGISTRY=https://registry.npmjs.org \
+  --build-arg GOPROXY=https://proxy.golang.org,direct \
+  --build-arg GOSUMDB=sum.golang.org
+```
+
+或在根目录 `.env` 里覆盖 `ALPINE_MIRROR` / `NPM_REGISTRY` / `GOPROXY` / `GOSUMDB`。
 
 浏览器打开 `http://127.0.0.1:8080`。API Key 也可在站点「设置」页填写。
 
@@ -90,6 +104,15 @@ docker run --name weread -d -p 8080:8080 \
 | `SYNC_INTERVAL` | `6h` | 同步过期提醒阈值 |
 
 换机或重建容器时，若要继续解密已有库中的 API Key，请一并迁移数据卷，或固定 `SETTINGS_ENCRYPT_KEY`。
+
+构建参数（仅 `docker build` / `compose build`，默认国内源）：
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `ALPINE_MIRROR` | `https://mirrors.aliyun.com/alpine` | Alpine apk |
+| `NPM_REGISTRY` | `https://registry.npmmirror.com` | pnpm / corepack |
+| `GOPROXY` | `https://goproxy.cn,direct` | Go 模块代理 |
+| `GOSUMDB` | `sum.golang.google.cn` | Go 校验和数据库 |
 
 ## 接口
 
