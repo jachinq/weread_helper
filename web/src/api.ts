@@ -79,6 +79,8 @@ export function saveSettings(body: {
   gatewayUrl: string
   syncInterval: string
   siteTitle: string
+  theme: string
+  colorScheme: string
 }) {
   return fetch('/api/settings', {
     method: 'PUT',

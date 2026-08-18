@@ -126,4 +126,6 @@ export type AppSettings = {
   gatewayUrl: string
   syncInterval: string
   siteTitle: string
+  theme: string
+  colorScheme: string
 }

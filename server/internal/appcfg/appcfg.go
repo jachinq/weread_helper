@@ -16,7 +16,36 @@ const (
 	DefaultGatewayURL   = "https://i.weread.qq.com/api/agent/gateway"
 	DefaultSyncInterval = "6h"
 	DefaultSiteTitle    = "纸间笔记"
+	DefaultTheme        = "walnut"
+	DefaultColorScheme  = "dark"
 )
+
+var allowedThemes = map[string]struct{}{
+	"walnut":      {},
+	"celadon":     {},
+	"cinnabar":    {},
+	"inknight":    {},
+	"moss":        {},
+	"moonfoil":    {},
+	"persimmon":   {},
+	"letterpress": {},
+}
+
+func NormalizeTheme(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if _, ok := allowedThemes[s]; ok {
+		return s
+	}
+	return DefaultTheme
+}
+
+func NormalizeColorScheme(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "light" || s == "dark" {
+		return s
+	}
+	return DefaultColorScheme
+}
 
 type Runtime struct {
 	APIKey       string
@@ -94,6 +123,12 @@ func LoadRuntime(st *store.Store, encKey []byte, env config.Config) (Runtime, er
 	if row.SiteTitle == "" {
 		_ = st.SetSetting("site_title", rt.SiteTitle)
 	}
+	if row.Theme == "" {
+		_ = st.SetSetting("theme", DefaultTheme)
+	}
+	if row.ColorScheme == "" {
+		_ = st.SetSetting("color_scheme", DefaultColorScheme)
+	}
 
 	return rt, nil
 }
@@ -106,7 +141,7 @@ func persistAPIKey(st *store.Store, encKey []byte, plain string) error {
 	return st.SetSetting("api_key", cipher)
 }
 
-func Save(st *store.Store, encKey []byte, skill, gateway, interval, title, newAPIKey string, keepKey bool, currentKey string) (Runtime, error) {
+func Save(st *store.Store, encKey []byte, skill, gateway, interval, title, theme, scheme, newAPIKey string, keepKey bool, currentKey string) (Runtime, error) {
 	skill = strings.TrimSpace(skill)
 	gateway = strings.TrimSpace(gateway)
 	interval = strings.TrimSpace(interval)
@@ -122,6 +157,8 @@ func Save(st *store.Store, encKey []byte, skill, gateway, interval, title, newAP
 	if title == "" {
 		title = DefaultSiteTitle
 	}
+	theme = NormalizeTheme(theme)
+	scheme = NormalizeColorScheme(scheme)
 	if err := ValidateGateway(gateway); err != nil {
 		return Runtime{}, err
 	}
@@ -148,6 +185,12 @@ func Save(st *store.Store, encKey []byte, skill, gateway, interval, title, newAP
 		return Runtime{}, err
 	}
 	if err := st.SetSetting("site_title", title); err != nil {
+		return Runtime{}, err
+	}
+	if err := st.SetSetting("theme", theme); err != nil {
+		return Runtime{}, err
+	}
+	if err := st.SetSetting("color_scheme", scheme); err != nil {
 		return Runtime{}, err
 	}
 

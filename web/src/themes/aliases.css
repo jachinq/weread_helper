@@ -1,0 +1,18 @@
+/* 旧材质名 → 语义 token。挂在 [data-theme] 上，避免写在裸 html 里先解析成具体色再继承。 */
+html[data-theme] {
+  --walnut: var(--color-bg);
+  --walnut-lift: var(--color-bg-lift);
+  --lamp: var(--color-accent-2);
+  --paper: var(--color-paper);
+  --paper-deep: var(--color-paper-deep);
+  --ink: var(--color-ink);
+  --ink-soft: var(--color-ink-soft);
+  --cream: var(--color-text);
+  --rule: var(--color-border);
+  --cinnabar: var(--color-accent);
+  --gold: var(--color-accent-2);
+  --highlight: var(--color-highlight);
+  --card: var(--color-surface);
+  --destructive: var(--color-danger);
+  --ring: var(--color-ring);
+}

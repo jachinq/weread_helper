@@ -324,7 +324,7 @@ const preferAuthors = computed(() => {
         readTime: asStr(row.readTime),
       }
     })
-    .filter((x): x is { name: string; count: number; readTime: string } => !!x.name)
+    .filter((x): x is { name: string; count: number; readTime: string } => x != null && !!x.name)
 })
 
 const preferPublishers = computed(() => {
@@ -336,7 +336,7 @@ const preferPublishers = computed(() => {
       if (!row) return null
       return { name: asStr(row.name), count: asNum(row.count) }
     })
-    .filter((x): x is { name: string; count: number } => !!x.name)
+    .filter((x): x is { name: string; count: number } => x != null && !!x.name)
     .slice(0, 8)
 })
 

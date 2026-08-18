@@ -1,0 +1,5 @@
+/* L2 chrome: 铅字主题减弱印章旋转 */
+html[data-theme="letterpress"] .seal {
+  transform: none;
+  border-radius: 0;
+}

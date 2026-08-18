@@ -15,6 +15,8 @@ type settingsDTO struct {
 	GatewayURL   string `json:"gatewayUrl"`
 	SyncInterval string `json:"syncInterval"`
 	SiteTitle    string `json:"siteTitle"`
+	Theme        string `json:"theme"`
+	ColorScheme  string `json:"colorScheme"`
 }
 
 func (s *Server) settingsPublic() (settingsDTO, error) {
@@ -48,6 +50,8 @@ func (s *Server) settingsPublic() (settingsDTO, error) {
 		GatewayURL:   gw,
 		SyncInterval: interval,
 		SiteTitle:    title,
+		Theme:        appcfg.NormalizeTheme(row.Theme),
+		ColorScheme:  appcfg.NormalizeColorScheme(row.ColorScheme),
 	}, nil
 }
 
@@ -66,6 +70,8 @@ type settingsPutBody struct {
 	GatewayURL   string `json:"gatewayUrl"`
 	SyncInterval string `json:"syncInterval"`
 	SiteTitle    string `json:"siteTitle"`
+	Theme        string `json:"theme"`
+	ColorScheme  string `json:"colorScheme"`
 }
 
 func (s *Server) settingsPut(c *gin.Context) {
@@ -94,6 +100,8 @@ func (s *Server) settingsPut(c *gin.Context) {
 		body.GatewayURL,
 		body.SyncInterval,
 		body.SiteTitle,
+		body.Theme,
+		body.ColorScheme,
 		body.APIKey,
 		keep,
 		current,

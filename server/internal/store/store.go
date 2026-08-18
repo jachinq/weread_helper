@@ -524,6 +524,8 @@ type AppSettings struct {
 	GatewayURL   string
 	SyncInterval string
 	SiteTitle    string
+	Theme        string
+	ColorScheme  string
 }
 
 func (s *Store) LoadAppSettings() (AppSettings, error) {
@@ -549,6 +551,10 @@ func (s *Store) LoadAppSettings() (AppSettings, error) {
 			out.SyncInterval = v
 		case "site_title":
 			out.SiteTitle = v
+		case "theme":
+			out.Theme = v
+		case "color_scheme":
+			out.ColorScheme = v
 		}
 	}
 	return out, rows.Err()
