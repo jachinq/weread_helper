@@ -1,0 +1,26 @@
+# env
+.env
+server/.env
+web/.env
+web/.env.local
+
+# go
+server/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+server/vendor/
+server/data/
+
+# node
+web/node_modules/
+web/dist/
+
+# ide
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

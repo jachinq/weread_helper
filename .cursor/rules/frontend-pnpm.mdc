@@ -1,0 +1,16 @@
+---
+description: 前端包管理与构建一律使用 pnpm，禁止 npm/yarn
+alwaysApply: true
+---
+
+# 前端使用 pnpm
+
+`web/` 目录的依赖安装、脚本执行与生产构建**只使用 pnpm**。
+
+- 安装：`pnpm install`（在 `web/` 下）
+- 开发：`pnpm run dev`
+- 构建：`pnpm run build`
+- 预览：`pnpm run preview`
+- 增删依赖：`pnpm add` / `pnpm add -D` / `pnpm remove`
+
+不要使用 `npm` 或 `yarn`。不要生成或提交 `package-lock.json` / `yarn.lock`；锁文件以 `web/pnpm-lock.yaml` 为准。
