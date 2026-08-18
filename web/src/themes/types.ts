@@ -10,6 +10,7 @@ export type ThemeId =
   | 'moonfoil'
   | 'persimmon'
   | 'letterpress'
+  | 'begonia'
 
 export type ThemePreview = {
   light: [string, string, string]

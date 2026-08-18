@@ -99,7 +99,6 @@ func (s *Server) todayPicks(refresh bool) ([]store.RandomHighlight, string, erro
 }
 
 func (s *Server) notebooks(c *gin.Context) {
-	s.job.MaybeStart(false)
 	count := queryInt(c, "count", 40)
 	lastSort := queryInt64(c, "lastSort", 0)
 	q := strings.TrimSpace(c.Query("q"))
@@ -139,7 +138,6 @@ func (s *Server) notebooks(c *gin.Context) {
 }
 
 func (s *Server) book(c *gin.Context) {
-	s.job.MaybeStart(false)
 	bookID := c.Param("bookId")
 	b, err := s.store.GetBook(bookID)
 	if err != nil {
@@ -167,7 +165,6 @@ func (s *Server) book(c *gin.Context) {
 }
 
 func (s *Server) notes(c *gin.Context) {
-	s.job.MaybeStart(false)
 	bookID := c.Param("bookId")
 	b, err := s.store.GetBook(bookID)
 	if err != nil {
@@ -249,7 +246,6 @@ func (s *Server) notes(c *gin.Context) {
 }
 
 func (s *Server) stats(c *gin.Context) {
-	s.job.MaybeStart(false)
 	mode := c.DefaultQuery("mode", "monthly")
 	switch mode {
 	case "weekly", "monthly", "annually", "overall":
@@ -280,7 +276,6 @@ func (s *Server) stats(c *gin.Context) {
 }
 
 func (s *Server) shelf(c *gin.Context) {
-	s.job.MaybeStart(false)
 	books, err := s.store.ListShelf()
 	if err != nil {
 		writeErr(c, err)

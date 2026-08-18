@@ -6,6 +6,7 @@
 @import "./moonfoil/tokens.css";
 @import "./persimmon/tokens.css";
 @import "./letterpress/tokens.css";
+@import "./begonia/tokens.css";
 @import "./walnut/chrome.css";
 @import "./celadon/chrome.css";
 @import "./cinnabar/chrome.css";
@@ -14,5 +15,6 @@
 @import "./moonfoil/chrome.css";
 @import "./persimmon/chrome.css";
 @import "./letterpress/chrome.css";
+@import "./begonia/chrome.css";
 @import "./sidebar/chrome.css";
 @import "./aliases.css";

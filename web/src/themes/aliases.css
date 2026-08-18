@@ -11,6 +11,8 @@ html[data-theme] {
   --rule: var(--color-border);
   --cinnabar: var(--color-accent);
   --gold: var(--color-accent-2);
+  /* 叠在 lamp / accent-2 色块上的字：暗色主题用深底，亮色主题用浅底 */
+  --color-on-accent-2: var(--color-bg);
   --highlight: var(--color-highlight);
   --card: var(--color-surface);
   --destructive: var(--color-danger);

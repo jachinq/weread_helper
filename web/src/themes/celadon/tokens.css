@@ -42,9 +42,9 @@ html[data-theme="celadon"][data-scheme="light"] {
   --color-paper: #f7fbf8;
   --color-paper-deep: #cfdcd3;
   --color-text: #1f2e28;
-  --color-text-muted: #4a6358;
+  --color-text-muted: #334840;
   --color-ink: #1f2e28;
-  --color-ink-soft: #4a6358;
+  --color-ink-soft: #334840;
   --color-accent: #3f6b5c;
   --color-accent-2: #2c4a40;
   --color-accent-hover: #4d7d6c;
@@ -54,7 +54,7 @@ html[data-theme="celadon"][data-scheme="light"] {
   --color-danger-text: #7a3228;
   --color-ring: #3f6b5c;
   --color-border: rgba(31, 46, 40, 0.14);
-  --color-nav: #3d5248;
+  --color-nav: #24332d;
   --glow: rgba(63, 107, 92, 0.12);
   --glow-2: rgba(126, 163, 146, 0.16);
   --bg-grad-a: #eef4f0;

@@ -29,6 +29,7 @@ var allowedThemes = map[string]struct{}{
 	"moonfoil":    {},
 	"persimmon":   {},
 	"letterpress": {},
+	"begonia":     {},
 }
 
 func NormalizeTheme(s string) string {

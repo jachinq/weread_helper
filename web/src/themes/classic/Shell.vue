@@ -5,7 +5,7 @@ import { themeHasLamp, themeKicker } from '../apply'
 import DockNav from '../DockNav.vue'
 import { useAppChrome } from '../useAppChrome'
 
-const { route, status, syncingClick, navClass, onSync, formatSyncTime } = useAppChrome()
+const { route, status, syncingClick, navClass, onSync, formatRelativeSyncTime, formatAbsoluteSyncTime, showNudge, nudgeKind, nudgeText, dismissNudge } = useAppChrome()
 </script>
 
 <template>
@@ -45,9 +45,10 @@ const { route, status, syncingClick, navClass, onSync, formatSyncTime } = useApp
           >设置</RouterLink>
         </nav>
         <div class="sync-box">
-          <span class="sync-meta">{{ formatSyncTime(status?.lastOkAt || 0) }}</span>
+          <span class="sync-meta" :title="formatAbsoluteSyncTime(status?.lastOkAt || 0)">{{ formatRelativeSyncTime(status?.lastOkAt || 0) }}</span>
           <button
             class="btn btn-solid"
+            :class="{ 'btn-sync-hint': showNudge && nudgeKind !== 'key' }"
             type="button"
             :disabled="status?.state === 'running' || syncingClick"
             :aria-busy="status?.state === 'running' || syncingClick"
@@ -63,6 +64,13 @@ const { route, status, syncingClick, navClass, onSync, formatSyncTime } = useApp
       <template v-if="status.phase"> · {{ status.phase }}</template>
       <template v-if="status.dirtyTotal"> · {{ status.dirtyDone }}/{{ status.dirtyTotal }} 本</template>
       <template v-if="status.elapsedSec"> · {{ status.elapsedSec }}s</template>
+    </p>
+    <p v-else-if="showNudge" class="banner nudge" role="status">
+      <span>{{ nudgeText }}</span>
+      <span class="nudge-actions">
+        <RouterLink v-if="nudgeKind === 'key'" class="btn" to="/settings">去设置</RouterLink>
+        <button class="btn" type="button" @click="dismissNudge">知道了</button>
+      </span>
     </p>
     <p v-if="status?.lastError" class="error" role="alert">上次同步失败：{{ status.lastError }}</p>
     <main id="main" tabindex="-1">

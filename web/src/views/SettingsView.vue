@@ -106,7 +106,7 @@ async function onSave() {
     apiKeyMasked.value = data.apiKeyMasked || ''
     applySiteTitle(data.siteTitle)
     applyTheme(data.theme, data.colorScheme)
-    ok.value = '已保存，同步任务会使用新配置'
+    ok.value = '已保存。请到顶栏点同步以拉取微信读书数据'
   } catch (e) {
     error.value = e instanceof Error ? e.message : '保存失败'
   } finally {
@@ -120,7 +120,7 @@ onMounted(load)
 <template>
   <section :aria-busy="loading">
     <h2 class="page-title">设置</h2>
-    <p class="muted">配置写入本地库。切换主题会立即保存。API Key 加密存储；输入框留空则不改现有密钥。</p>
+    <p class="muted">配置写入本地库。切换主题会立即保存。API Key 加密存储；输入框留空则不改现有密钥。保存 Key 后请到顶栏点同步。</p>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <p v-if="ok" class="banner" role="status">{{ ok }}</p>
@@ -166,7 +166,15 @@ onMounted(load)
 
       <fieldset>
         <legend>微信读书 API</legend>
-        <label for="set-key">API Key</label>
+        <label for="set-key" class="field-label-row">
+          API Key
+          <a
+            class="field-help-link"
+            href="https://weread.qq.com/r/weread-skills"
+            target="_blank"
+            rel="noopener noreferrer"
+          >申请入口</a>
+        </label>
         <input
           id="set-key"
           v-model="apiKey"
@@ -184,9 +192,9 @@ onMounted(load)
         <label for="set-skill">skill_version</label>
         <input id="set-skill" v-model="skillVersion" type="text" autocomplete="off" />
 
-        <label for="set-interval">同步间隔</label>
+        <label for="set-interval">提醒阈值</label>
         <input id="set-interval" v-model="syncInterval" type="text" placeholder="6h" autocomplete="off" />
-        <p class="field-hint">Go duration，例如 6h、30m</p>
+        <p class="field-hint">超过此时长后进站会提示手动同步，不会自动拉取。Go duration，例如 6h、30m</p>
       </fieldset>
 
       <button class="btn btn-solid" type="submit" :disabled="loading || saving">

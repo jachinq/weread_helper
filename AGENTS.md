@@ -9,7 +9,8 @@
 ### 本地库与同步
 
 - SQLite（`DATABASE_PATH`，默认 `server/data/weread.db`）存笔记、统计快照、书架、应用设置。
-- 启动时若从未成功同步则后台全量；之后超过同步间隔（默认 6h，可在设置页改）自动增量；可手动同步。
+- 同步仅由前端手动触发（`POST /api/sync`）。进程启动、定时器、读本地接口都不会自动开任务。
+- 设置里的间隔（默认 6h）只作提醒阈值：`/api/sync/status` 的 `stale` 表示距上次成功同步已超过该时长（或从未同步）。进入站点时前端据此引导用户点「同步」。
 - 增量：拉完 `/user/notebooks`，仅对计数/`sort`/`readingProgress` 变化或从未拉过笔记的书刷新章节/划线/想法（该书内全量覆盖）。
 - 书架、阅读统计每次同步整份覆盖。前端 GET 只读本地。
 
@@ -40,7 +41,7 @@
 
 ### 设置
 
-- 站点名、Gateway、`skill_version`、同步间隔、API Key 写入 `app_settings`。
+- 站点名、Gateway、`skill_version`、提醒阈值（原同步间隔）、API Key 写入 `app_settings`。
 - API Key 用 AES-256-GCM 加密；主密钥来自 `SETTINGS_ENCRYPT_KEY` 或数据库同目录的 `settings.key`。
 - GET 只返回脱敏 `apiKeyMasked`（如 `wrk-****afaf`）；PUT 时 `apiKey` 留空不修改。
 - 保存后对当前进程立即生效，无需重启。无 Key 时服务仍可启动，同步会失败直到填入。
@@ -58,8 +59,8 @@
 | GET | `/api/books/:bookId/notes` | 聚合章节、划线、想法（本地） |
 | GET | `/api/stats?mode=` | 阅读统计快照（本地） |
 | GET | `/api/shelf` | 书架（本地） |
-| GET | `/api/sync/status` | 同步状态 |
-| POST | `/api/sync?force=` | 触发同步；`force=1` 刷新全部有笔记的书 |
+| GET | `/api/sync/status` | 同步状态（含 `stale` 提醒阈值） |
+| POST | `/api/sync?force=` | 手动触发同步；`force=1` 刷新全部有笔记的书 |
 | GET | `/api/settings` | 应用设置（Key 仅脱敏） |
 | PUT | `/api/settings` | 更新设置；空 `apiKey` 不改密钥 |
 

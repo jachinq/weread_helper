@@ -132,6 +132,22 @@ export const THEMES: ThemeMeta[] = [
       light: ['#f4f1ea', '#222', '#111'],
     },
   },
+  {
+    id: 'begonia',
+    label: '海棠春笺',
+    kicker: 'Begonia slip',
+    layout: 'sidebar',
+    hasLamp: true,
+    fonts: {
+      display: '"Cormorant Garamond", "Noto Serif SC", serif',
+      serif: '"Noto Serif SC", "Songti SC", serif',
+      ui: '"Karla", sans-serif',
+    },
+    preview: {
+      dark: ['#1a1014', '#d46a86', '#f0c4d0'],
+      light: ['#f6e8ee', '#b83d62', '#2a141c'],
+    },
+  },
 ]
 
 const byId = new Map(THEMES.map((t) => [t.id, t]))

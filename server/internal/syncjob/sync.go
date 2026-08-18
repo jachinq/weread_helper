@@ -101,17 +101,6 @@ func (j *Job) setProgress(phase, bookID string, done, total int) {
 	}
 }
 
-func (j *Job) MaybeStart(force bool) (started bool) {
-	st := j.Status()
-	if st.State == "running" {
-		return false
-	}
-	if !force && !st.Stale {
-		return false
-	}
-	return j.Start(force)
-}
-
 func (j *Job) Start(force bool) bool {
 	j.mu.Lock()
 	if j.running {

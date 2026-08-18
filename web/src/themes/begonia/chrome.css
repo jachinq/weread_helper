@@ -1,0 +1,59 @@
+html[data-theme="begonia"] .seal {
+  transform: rotate(-8deg);
+  border-radius: 50% 40% 50% 42%;
+  border-width: 1px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 35%, transparent),
+    0 10px 24px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+html[data-theme="begonia"] .kicker {
+  letter-spacing: 0.28em;
+  color: var(--color-accent);
+}
+
+html[data-theme="begonia"][data-layout="classic"] .masthead {
+  border-bottom: 0;
+  box-shadow:
+    0 1px 0 var(--color-border),
+    0 2px 0 color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+html[data-theme="begonia"][data-layout="classic"] .masthead h1 {
+  letter-spacing: 0.12em;
+  font-style: italic;
+}
+
+html[data-theme="begonia"][data-layout="sidebar"] .rail {
+  border-right-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
+}
+
+html[data-theme="begonia"][data-layout="sidebar"] .rail h1 {
+  font-style: italic;
+  letter-spacing: 0.08em;
+}
+
+html[data-theme="begonia"][data-layout="sidebar"] .rail-nav a.active,
+html[data-theme="begonia"][data-layout="sidebar"] .rail-nav a:hover {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+}
+
+html[data-theme="begonia"] .card::after {
+  background: linear-gradient(
+    180deg,
+    transparent 40%,
+    color-mix(in srgb, var(--color-accent) 18%, transparent)
+  );
+}
+
+html[data-theme="begonia"] .card:hover {
+  transform: translateY(-4px) rotate(-0.2deg);
+}
+
+html[data-theme="begonia"] .slip {
+  border-radius: calc(var(--radius) + 2px);
+}
+
+html[data-theme="begonia"] .banner {
+  border-style: solid;
+}

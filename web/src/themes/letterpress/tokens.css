@@ -42,9 +42,9 @@ html[data-theme="letterpress"][data-scheme="light"] {
   --color-paper: #fff;
   --color-paper-deep: #ddd6c8;
   --color-text: #111;
-  --color-text-muted: #555;
+  --color-text-muted: #3a3a3a;
   --color-ink: #111;
-  --color-ink-soft: #555;
+  --color-ink-soft: #3a3a3a;
   --color-accent: #222;
   --color-accent-2: #111;
   --color-accent-hover: #333;
@@ -54,7 +54,7 @@ html[data-theme="letterpress"][data-scheme="light"] {
   --color-danger-text: #5a1c18;
   --color-ring: #222;
   --color-border: rgba(17, 17, 17, 0.16);
-  --color-nav: #333;
+  --color-nav: #1a1a1a;
   --glow: rgba(17, 17, 17, 0.06);
   --glow-2: rgba(17, 17, 17, 0.04);
   --bg-grad-a: #f7f4ee;

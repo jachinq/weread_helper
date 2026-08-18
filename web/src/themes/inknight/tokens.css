@@ -42,9 +42,9 @@ html[data-theme="inknight"][data-scheme="light"] {
   --color-paper: #ffffff;
   --color-paper-deep: #d5e0ec;
   --color-text: #122033;
-  --color-text-muted: #4a5e74;
+  --color-text-muted: #334456;
   --color-ink: #122033;
-  --color-ink-soft: #4a5e74;
+  --color-ink-soft: #334456;
   --color-accent: #1e4f86;
   --color-accent-2: #163a64;
   --color-accent-hover: #2860a0;
@@ -54,7 +54,7 @@ html[data-theme="inknight"][data-scheme="light"] {
   --color-danger-text: #8a2e26;
   --color-ring: #1e4f86;
   --color-border: rgba(18, 32, 51, 0.14);
-  --color-nav: #2c4058;
+  --color-nav: #1a2838;
   --glow: rgba(30, 79, 134, 0.1);
   --glow-2: rgba(110, 160, 212, 0.16);
   --bg-grad-a: #f4f8fc;

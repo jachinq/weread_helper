@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -40,15 +39,6 @@ func main() {
 
 	client := weread.New(rt.GatewayURL, rt.APIKey, rt.SkillVersion)
 	job := syncjob.New(client, st, rt.SyncInterval)
-	job.MaybeStart(false)
-
-	go func() {
-		t := time.NewTicker(10 * time.Minute)
-		defer t.Stop()
-		for range t.C {
-			job.MaybeStart(false)
-		}
-	}()
 
 	srv := httpapi.New(st, job, client, encKey)
 

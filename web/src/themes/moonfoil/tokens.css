@@ -42,9 +42,9 @@ html[data-theme="moonfoil"][data-scheme="light"] {
   --color-paper: #ffffff;
   --color-paper-deep: #ddd9d0;
   --color-text: #1c1d20;
-  --color-text-muted: #5c5a56;
+  --color-text-muted: #3e3d3a;
   --color-ink: #1c1d20;
-  --color-ink-soft: #5c5a56;
+  --color-ink-soft: #3e3d3a;
   --color-accent: #8a7344;
   --color-accent-2: #5c4e32;
   --color-accent-hover: #9a8454;
@@ -54,7 +54,7 @@ html[data-theme="moonfoil"][data-scheme="light"] {
   --color-danger-text: #7a3028;
   --color-ring: #8a7344;
   --color-border: rgba(28, 29, 32, 0.12);
-  --color-nav: #3a3b40;
+  --color-nav: #25262a;
   --glow: rgba(138, 115, 68, 0.1);
   --glow-2: rgba(196, 180, 138, 0.16);
   --bg-grad-a: #f7f5f0;
