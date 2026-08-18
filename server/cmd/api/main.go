@@ -49,6 +49,10 @@ func main() {
 		AllowHeaders: []string{"Origin", "Content-Type"},
 	}))
 	srv.Register(r)
+	if cfg.WebDir != "" {
+		httpapi.MountWeb(r, cfg.WebDir)
+		log.Printf("serving web from %s", cfg.WebDir)
+	}
 
 	log.Printf("listening on %s db=%s interval=%s", cfg.ListenAddr, cfg.DatabasePath, rt.SyncInterval)
 	if err := http.ListenAndServe(cfg.ListenAddr, r); err != nil {

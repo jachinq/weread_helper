@@ -14,6 +14,7 @@ type Config struct {
 	ListenAddr   string
 	GatewayURL   string
 	DatabasePath string
+	WebDir       string
 	SyncInterval time.Duration
 }
 
@@ -34,6 +35,7 @@ func Load() Config {
 		ListenAddr:   getenv("LISTEN_ADDR", ":8080"),
 		GatewayURL:   getenv("GATEWAY_URL", "https://i.weread.qq.com/api/agent/gateway"),
 		DatabasePath: getenv("DATABASE_PATH", filepath.Join("data", "weread.db")),
+		WebDir:       os.Getenv("WEB_DIR"),
 		SyncInterval: d,
 	}
 	return cfg

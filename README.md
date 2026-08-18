@@ -13,7 +13,7 @@ copy .env.example server\.env
 
 将 `WEREAD_API_KEY` 换成真实值（也可启动后在「设置」页填写；首次会把 env 里的 Key 加密写入本地库）。
 
-## 运行
+## 本地开发
 
 后端（默认 `:8080`）：
 
@@ -32,6 +32,65 @@ pnpm run dev
 
 浏览器打开 `http://127.0.0.1:5173`。
 
+## Docker 部署
+
+镜像为多阶段构建：Node 打前端、Go 静态编译后端（`CGO_ENABLED=0` + 去符号），最终仅保留 Alpine 运行层（CA 证书、时区、`su-exec`）。容器内由同一进程提供 `/api` 与前端静态文件。SQLite 与加密密钥文件写在数据卷 `/data`。
+
+### 使用 Compose（推荐）
+
+在仓库根目录创建 `.env`（不要提交）：
+
+```env
+WEREAD_API_KEY=wrk-xxxxxxxx
+# 可选：固定 32 字节密钥的 64 位 hex。不填则首次启动写入 /data/settings.key
+# SETTINGS_ENCRYPT_KEY=
+```
+
+启动：
+
+```bash
+docker compose up -d --build
+```
+
+浏览器打开 `http://127.0.0.1:8080`。API Key 也可在站点「设置」页填写。
+
+常用命令：
+
+```bash
+docker compose logs -f
+docker compose ps
+docker compose down
+```
+
+数据保存在 Docker 卷 `weread-data`。卸载容器但保留数据：`docker compose down`。连同数据一起删除：`docker compose down -v`。
+
+### 仅构建 / 运行镜像
+
+```bash
+docker build -t weread-helper:latest .
+docker run --name weread -d -p 8080:8080 \
+  -e WEREAD_API_KEY=wrk-xxxxxxxx \
+  -e TZ=Asia/Shanghai \
+  -v weread-data:/data \
+  weread-helper:latest
+```
+
+### 环境变量
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `WEREAD_API_KEY` | 空 | Skills API Key；库中尚无 Key 时作为种子写入 |
+| `SETTINGS_ENCRYPT_KEY` | 空 | AES-256 主密钥（64 位 hex）。空则使用 `/data/settings.key` |
+| `DATABASE_PATH` | `/data/weread.db` | SQLite 路径 |
+| `WEB_DIR` | `/app/web` | 前端静态目录；为空则不托管页面 |
+| `LISTEN_ADDR` | `:8080` | 监听地址 |
+| `TZ` | `Asia/Shanghai` | 时区（影响当日摘抄按本地日期缓存） |
+| `SKILL_VERSION` | `1.0.4` | Gateway skill 版本 |
+| `GATEWAY_URL` | 官方 Gateway | Agent Gateway 地址 |
+| `SYNC_INTERVAL` | `6h` | 同步过期提醒阈值 |
+
+换机或重建容器时，若要继续解密已有库中的 API Key，请一并迁移数据卷，或固定 `SETTINGS_ENCRYPT_KEY`。
+
 ## 接口
 
 - `GET /api/health`
@@ -39,3 +98,8 @@ pnpm run dev
 - `GET /api/books/:bookId`
 - `GET /api/books/:bookId/notes`
 - `GET /api/stats?mode=weekly|monthly|annually|overall`
+- `GET /api/shelf`
+- `GET /api/sync/status`
+- `POST /api/sync?force=`
+- `GET /api/settings`
+- `PUT /api/settings`

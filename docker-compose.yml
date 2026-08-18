@@ -1,0 +1,31 @@
+services:
+  weread:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: weread-helper:latest
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Asia/Shanghai
+      LISTEN_ADDR: ":8080"
+      DATABASE_PATH: /data/weread.db
+      WEB_DIR: /app/web
+      GIN_MODE: release
+      WEREAD_API_KEY: ${WEREAD_API_KEY:-}
+      SETTINGS_ENCRYPT_KEY: ${SETTINGS_ENCRYPT_KEY:-}
+      SKILL_VERSION: ${SKILL_VERSION:-1.0.4}
+      GATEWAY_URL: ${GATEWAY_URL:-https://i.weread.qq.com/api/agent/gateway}
+      SYNC_INTERVAL: ${SYNC_INTERVAL:-6h}
+    volumes:
+      - weread-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  weread-data:
