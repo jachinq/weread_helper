@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
 type Client struct {
+	mu           sync.Mutex
 	http         *http.Client
 	gatewayURL   string
 	apiKey       string
@@ -27,6 +29,14 @@ func New(gatewayURL, apiKey, skillVersion string) *Client {
 	}
 }
 
+func (c *Client) Update(gatewayURL, apiKey, skillVersion string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.gatewayURL = gatewayURL
+	c.apiKey = apiKey
+	c.skillVersion = skillVersion
+}
+
 type APIError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -38,9 +48,13 @@ func (e *APIError) Error() string {
 }
 
 func (c *Client) Call(apiName string, params map[string]any) (map[string]any, error) {
+	c.mu.Lock()
+	gw, key, ver := c.gatewayURL, c.apiKey, c.skillVersion
+	c.mu.Unlock()
+
 	payload := map[string]any{
 		"api_name":      apiName,
-		"skill_version": c.skillVersion,
+		"skill_version": ver,
 	}
 	for k, v := range params {
 		payload[k] = v
@@ -51,11 +65,11 @@ func (c *Client) Call(apiName string, params map[string]any) (map[string]any, er
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.gatewayURL, bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, gw, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Authorization", "Bearer "+key)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.http.Do(req)

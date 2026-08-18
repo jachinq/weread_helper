@@ -2,14 +2,14 @@
 
 个人自用的微信读书笔记与阅读统计工具。前后端分离：Go BFF 持有 API Key，前端只请求本服务 `/api`，不直连微信读书。
 
-凭证来自 [微信读书 Skills API Key](https://weread.qq.com/r/weread-skills)，写入 `server/.env` 的 `WEREAD_API_KEY`。官方接口说明见仓库根目录 `docs/weread_API.md`（Gateway `skill_version` 当前为 `1.0.4`）。
+凭证来自 [微信读书 Skills API Key](https://weread.qq.com/r/weread-skills)。可写入 `server/.env` 的 `WEREAD_API_KEY`（库中尚无 Key 时会加密入库作为种子），或在前端「设置」页填写。之后以 SQLite `app_settings` 为准。官方接口说明见仓库根目录 `docs/weread_API.md`（Gateway `skill_version` 当前为 `1.0.4`）。
 
 ## 当前已实现
 
 ### 本地库与同步
 
-- SQLite（`DATABASE_PATH`，默认 `server/data/weread.db`）存笔记、统计快照、书架。
-- 启动时若从未成功同步则后台全量；之后超过 `SYNC_INTERVAL`（默认 6h）自动增量；可手动同步。
+- SQLite（`DATABASE_PATH`，默认 `server/data/weread.db`）存笔记、统计快照、书架、应用设置。
+- 启动时若从未成功同步则后台全量；之后超过同步间隔（默认 6h，可在设置页改）自动增量；可手动同步。
 - 增量：拉完 `/user/notebooks`，仅对计数/`sort`/`readingProgress` 变化或从未拉过笔记的书刷新章节/划线/想法（该书内全量覆盖）。
 - 书架、阅读统计每次同步整份覆盖。前端 GET 只读本地。
 
@@ -38,6 +38,14 @@
 - 本地 `is_on_shelf` 的书列表：封面、书名、作者、进度、读完/置顶。
 - 前端路由：`/shelf`。
 
+### 设置
+
+- 站点名、Gateway、`skill_version`、同步间隔、API Key 写入 `app_settings`。
+- API Key 用 AES-256-GCM 加密；主密钥来自 `SETTINGS_ENCRYPT_KEY` 或数据库同目录的 `settings.key`。
+- GET 只返回脱敏 `apiKeyMasked`（如 `wrk-****afaf`）；PUT 时 `apiKey` 留空不修改。
+- 保存后对当前进程立即生效，无需重启。无 Key 时服务仍可启动，同步会失败直到填入。
+- 前端路由：`/settings`。
+
 ### 本服务 REST（给前端）
 
 | 方法 | 路径 | 作用 |
@@ -52,6 +60,8 @@
 | GET | `/api/shelf` | 书架（本地） |
 | GET | `/api/sync/status` | 同步状态 |
 | POST | `/api/sync?force=` | 触发同步；`force=1` 刷新全部有笔记的书 |
+| GET | `/api/settings` | 应用设置（Key 仅脱敏） |
+| PUT | `/api/settings` | 更新设置；空 `apiKey` 不改密钥 |
 
 ### 已封装的 Gateway 方法
 
@@ -85,7 +95,9 @@ web (Vite :5173)  --/api-->  server (Gin :8080 + SQLite)  --Bearer wrk-*-->  i.w
 - `server/internal/syncjob`：增量同步
 - `server/internal/httpapi`：BFF 路由与笔记聚合
 - `server/internal/config`：环境变量
-- `web/src/views`：`HomeView.vue`、`NotesList.vue`、`NoteDetail.vue`、`StatsView.vue`、`ShelfView.vue`
+- `server/internal/appcfg`：库内设置加载/保存
+- `server/internal/secret`：API Key 加解密与脱敏
+- `web/src/views`：`HomeView.vue`、`NotesList.vue`、`NoteDetail.vue`、`StatsView.vue`、`ShelfView.vue`、`SettingsView.vue`
 - `web/src/api.ts`：前端请求封装
 
 ## 本地运行

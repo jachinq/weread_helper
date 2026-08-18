@@ -5,6 +5,7 @@ import type {
   SyncStatus,
   ShelfResponse,
   RandomHighlightsResponse,
+  AppSettings,
 } from './types'
 
 async function getJson<T>(url: string): Promise<T> {
@@ -32,9 +33,11 @@ export function refreshRandomHighlights() {
   })
 }
 
-export function fetchNotebooks(count = 40, lastSort?: number) {
+export function fetchNotebooks(count = 40, lastSort?: number, query?: string) {
   const q = new URLSearchParams({ count: String(count) })
   if (lastSort) q.set('lastSort', String(lastSort))
+  const keyword = query?.trim()
+  if (keyword) q.set('q', keyword)
   return getJson<NotebooksResponse>(`/api/notebooks?${q}`)
 }
 
@@ -63,5 +66,30 @@ export function triggerSync(force = false) {
       throw new Error(msg)
     }
     return data as SyncStatus & { started?: boolean }
+  })
+}
+
+export function fetchSettings() {
+  return getJson<AppSettings>('/api/settings')
+}
+
+export function saveSettings(body: {
+  apiKey: string
+  skillVersion: string
+  gatewayUrl: string
+  syncInterval: string
+  siteTitle: string
+}) {
+  return fetch('/api/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(async (res) => {
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const msg = (data as { error?: string }).error || `请求失败 (${res.status})`
+      throw new Error(msg)
+    }
+    return data as AppSettings
   })
 }

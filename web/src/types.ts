@@ -55,9 +55,20 @@ export type StatsResponse = {
   dayAverageReadTimeFormatted?: string
   readDays?: number
   dailyReadTimes?: unknown
+  readTimes?: unknown
+  wrReadTime?: number
+  wrListenTime?: number
+  readRate?: number
+  authorCount?: number
   preferCategory?: unknown
+  preferCategoryWord?: string
+  preferTime?: unknown
+  preferTimeWord?: string
   preferAuthor?: unknown
+  preferPublisher?: unknown
   preferBooks?: unknown
+  readLongest?: unknown
+  readStat?: unknown
   compare?: unknown
   medals?: unknown
   rank?: unknown
@@ -107,4 +118,12 @@ export type RandomHighlight = {
 export type RandomHighlightsResponse = {
   date?: string
   items: RandomHighlight[]
+}
+
+export type AppSettings = {
+  apiKeyMasked: string
+  skillVersion: string
+  gatewayUrl: string
+  syncInterval: string
+  siteTitle: string
 }

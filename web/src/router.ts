@@ -4,11 +4,16 @@ import NotesList from './views/NotesList.vue'
 import NoteDetail from './views/NoteDetail.vue'
 import StatsView from './views/StatsView.vue'
 import ShelfView from './views/ShelfView.vue'
+import SettingsView from './views/SettingsView.vue'
+import { siteTitle } from './site'
 
 export const router = createRouter({
   history: createWebHistory(),
-  scrollBehavior(_to, _from, saved) {
+  scrollBehavior(to, _from, saved) {
     if (saved) return saved
+    if (to.hash) {
+      return false
+    }
     return { top: 0 }
   },
   routes: [
@@ -17,10 +22,12 @@ export const router = createRouter({
     { path: '/notes/:bookId', component: NoteDetail, meta: { title: '笔记详情' } },
     { path: '/stats', component: StatsView, meta: { title: '阅读统计' } },
     { path: '/shelf', component: ShelfView, meta: { title: '书架' } },
+    { path: '/settings', component: SettingsView, meta: { title: '设置' } },
   ],
 })
 
 router.afterEach((to) => {
   const page = typeof to.meta.title === 'string' ? to.meta.title : ''
-  document.title = page ? `${page} · 纸间笔记` : '纸间笔记 · 微信读书助手'
+  const brand = siteTitle.value
+  document.title = page ? `${page} · ${brand}` : `${brand} · 微信读书助手`
 })

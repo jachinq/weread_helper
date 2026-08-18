@@ -66,6 +66,11 @@ CREATE TABLE IF NOT EXISTS sync_meta (
   value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS app_settings (
+  k TEXT PRIMARY KEY,
+  v TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_books_notebooks_sort ON books(in_notebooks, sort DESC);
 CREATE INDEX IF NOT EXISTS idx_books_shelf ON books(is_on_shelf, is_top DESC, read_update_time DESC);
 CREATE INDEX IF NOT EXISTS idx_highlights_book ON highlights(book_id);

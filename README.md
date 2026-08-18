@@ -11,7 +11,7 @@
 copy .env.example server\.env
 ```
 
-将 `WEREAD_API_KEY` 换成真实值。
+将 `WEREAD_API_KEY` 换成真实值（也可启动后在「设置」页填写；首次会把 env 里的 Key 加密写入本地库）。
 
 ## 运行
 

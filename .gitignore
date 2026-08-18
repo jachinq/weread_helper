@@ -13,6 +13,8 @@ server/bin/
 *.dylib
 server/vendor/
 server/data/
+settings.key
+**/settings.key
 
 # node
 web/node_modules/

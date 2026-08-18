@@ -263,16 +263,31 @@ func placeholders(n int) string {
 	return strings.Repeat("?,", n-1) + "?"
 }
 
-func (s *Store) ListNotebooks(count int, lastSort int64) (books []*Book, totalBooks int, totalNotes int, hasMore bool, err error) {
+func escapeLike(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `%`, `\%`)
+	s = strings.ReplaceAll(s, `_`, `\_`)
+	return s
+}
+
+func (s *Store) ListNotebooks(count int, lastSort int64, query string) (books []*Book, totalBooks int, totalNotes int, hasMore bool, err error) {
 	if count <= 0 {
 		count = 40
 	}
-	err = s.DB.QueryRow(`SELECT COUNT(*), COALESCE(SUM(note_count+review_count+bookmark_count),0) FROM books WHERE in_notebooks=1`).Scan(&totalBooks, &totalNotes)
+	where := `in_notebooks=1`
+	countArgs := []any{}
+	query = strings.TrimSpace(query)
+	if query != "" {
+		pat := "%" + escapeLike(query) + "%"
+		where += ` AND (title LIKE ? ESCAPE '\' OR author LIKE ? ESCAPE '\')`
+		countArgs = append(countArgs, pat, pat)
+	}
+	err = s.DB.QueryRow(`SELECT COUNT(*), COALESCE(SUM(note_count+review_count+bookmark_count),0) FROM books WHERE `+where, countArgs...).Scan(&totalBooks, &totalNotes)
 	if err != nil {
 		return nil, 0, 0, false, err
 	}
-	q := `SELECT ` + bookCols + ` FROM books WHERE in_notebooks=1`
-	args := []any{}
+	q := `SELECT ` + bookCols + ` FROM books WHERE ` + where
+	args := append([]any{}, countArgs...)
 	if lastSort > 0 {
 		q += ` AND sort < ?`
 		args = append(args, lastSort)
@@ -486,4 +501,55 @@ func (s *Store) HasAnyBooks() (bool, error) {
 	var n int
 	err := s.DB.QueryRow(`SELECT COUNT(*) FROM books`).Scan(&n)
 	return n > 0, err
+}
+
+func (s *Store) GetSetting(key string) (string, error) {
+	var v string
+	err := s.DB.QueryRow(`SELECT v FROM app_settings WHERE k=?`, key).Scan(&v)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return v, err
+}
+
+func (s *Store) SetSetting(key, value string) error {
+	_, err := s.DB.Exec(`INSERT INTO app_settings(k, v) VALUES (?,?)
+ON CONFLICT(k) DO UPDATE SET v=excluded.v`, key, value)
+	return err
+}
+
+type AppSettings struct {
+	APIKeyCipher string
+	SkillVersion string
+	GatewayURL   string
+	SyncInterval string
+	SiteTitle    string
+}
+
+func (s *Store) LoadAppSettings() (AppSettings, error) {
+	var out AppSettings
+	rows, err := s.DB.Query(`SELECT k, v FROM app_settings`)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			return out, err
+		}
+		switch k {
+		case "api_key":
+			out.APIKeyCipher = v
+		case "skill_version":
+			out.SkillVersion = v
+		case "gateway_url":
+			out.GatewayURL = v
+		case "sync_interval":
+			out.SyncInterval = v
+		case "site_title":
+			out.SiteTitle = v
+		}
+	}
+	return out, rows.Err()
 }

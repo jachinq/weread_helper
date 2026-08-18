@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,13 +20,15 @@ import (
 type Server struct {
 	store     *store.Store
 	job       *syncjob.Job
+	client    *weread.Client
+	encKey    []byte
 	pickMu    sync.Mutex
 	pickDate  string
 	pickItems []store.RandomHighlight
 }
 
-func New(st *store.Store, job *syncjob.Job) *Server {
-	return &Server{store: st, job: job}
+func New(st *store.Store, job *syncjob.Job, client *weread.Client, encKey []byte) *Server {
+	return &Server{store: st, job: job, client: client, encKey: encKey}
 }
 
 func (s *Server) Register(r *gin.Engine) {
@@ -40,6 +43,8 @@ func (s *Server) Register(r *gin.Engine) {
 	api.GET("/shelf", s.shelf)
 	api.GET("/sync/status", s.syncStatus)
 	api.POST("/sync", s.syncStart)
+	api.GET("/settings", s.settingsGet)
+	api.PUT("/settings", s.settingsPut)
 }
 
 func (s *Server) health(c *gin.Context) {
@@ -97,7 +102,8 @@ func (s *Server) notebooks(c *gin.Context) {
 	s.job.MaybeStart(false)
 	count := queryInt(c, "count", 40)
 	lastSort := queryInt64(c, "lastSort", 0)
-	books, totalBooks, totalNotes, hasMore, err := s.store.ListNotebooks(count, lastSort)
+	q := strings.TrimSpace(c.Query("q"))
+	books, totalBooks, totalNotes, hasMore, err := s.store.ListNotebooks(count, lastSort, q)
 	if err != nil {
 		writeErr(c, err)
 		return
@@ -229,6 +235,11 @@ func (s *Server) notes(c *gin.Context) {
 	book := conv.ParseJSONMap(b.InfoJSON)
 	if book == nil {
 		book = map[string]any{"bookId": b.BookID, "title": b.Title, "author": b.Author, "cover": b.Cover}
+	}
+	if intro := strings.TrimSpace(b.Intro); intro != "" {
+		if existing, _ := book["intro"].(string); strings.TrimSpace(existing) == "" {
+			book["intro"] = intro
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"bookId":   bookID,

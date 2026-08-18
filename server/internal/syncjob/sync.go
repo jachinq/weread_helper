@@ -54,6 +54,12 @@ func New(client *weread.Client, st *store.Store, interval time.Duration) *Job {
 	return j
 }
 
+func (j *Job) ApplyRuntime(interval time.Duration) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.interval = interval
+}
+
 func (j *Job) Status() Status {
 	j.mu.Lock()
 	defer j.mu.Unlock()
