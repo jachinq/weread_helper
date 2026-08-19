@@ -43,6 +43,10 @@ func Open(path string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("migrate read_stats: %w", err)
 	}
+	if err := st.migrateReadStatsPeriod(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("migrate read_stats period: %w", err)
+	}
 	return st, nil
 }
 
@@ -532,12 +536,51 @@ ON CONFLICT(mode, year) DO UPDATE SET payload=excluded.payload, fetched_at=exclu
 	return tx.Commit()
 }
 
-func (s *Store) PutStats(mode, payload string) error {
-	year := int64(0)
-	if mode == "annually" {
-		year = int64(YearFromPayload(payload, time.Now()))
+func (s *Store) migrateReadStatsPeriod() error {
+	rows, err := s.DB.Query(`SELECT mode, year, payload, fetched_at FROM read_stats WHERE mode IN ('weekly','monthly') AND year=0`)
+	if err != nil {
+		return err
 	}
-	return s.PutStatsYear(mode, year, payload)
+	defer rows.Close()
+	type row struct {
+		mode      string
+		payload   string
+		fetchedAt int64
+	}
+	var pending []row
+	for rows.Next() {
+		var r row
+		var year int64
+		if err := rows.Scan(&r.mode, &year, &r.payload, &r.fetchedAt); err != nil {
+			return err
+		}
+		pending = append(pending, r)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	now := time.Now()
+	for _, r := range pending {
+		key := PeriodKeyFromPayload(r.mode, r.payload, time.Unix(r.fetchedAt, 0))
+		if key <= 0 {
+			key = PeriodKeyFromPayload(r.mode, r.payload, now)
+		}
+		if _, err := s.DB.Exec(`INSERT INTO read_stats(mode, year, payload, fetched_at) VALUES (?,?,?,?)
+ON CONFLICT(mode, year) DO UPDATE SET
+  payload=CASE WHEN excluded.fetched_at>=read_stats.fetched_at THEN excluded.payload ELSE read_stats.payload END,
+  fetched_at=CASE WHEN excluded.fetched_at>=read_stats.fetched_at THEN excluded.fetched_at ELSE read_stats.fetched_at END`,
+			r.mode, key, r.payload, r.fetchedAt); err != nil {
+			return err
+		}
+		if _, err := s.DB.Exec(`DELETE FROM read_stats WHERE mode=? AND year=0`, r.mode); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Store) PutStats(mode, payload string) error {
+	return s.PutStatsYear(mode, PeriodKeyFromPayload(mode, payload, time.Now()), payload)
 }
 
 func (s *Store) PutStatsYear(mode string, year int64, payload string) error {
@@ -548,18 +591,30 @@ ON CONFLICT(mode, year) DO UPDATE SET payload=excluded.payload, fetched_at=exclu
 }
 
 func (s *Store) GetStats(mode string) (payload string, fetchedAt int64, err error) {
-	if mode == "annually" {
-		payload, fetchedAt, err = s.GetStatsYear(mode, int64(CalendarYear(time.Now())))
-		if err != nil || payload != "" {
-			return payload, fetchedAt, err
-		}
-		err = s.DB.QueryRow(`SELECT payload, fetched_at FROM read_stats WHERE mode=? ORDER BY year DESC LIMIT 1`, mode).Scan(&payload, &fetchedAt)
-		if err == sql.ErrNoRows {
-			return "", 0, nil
-		}
+	now := time.Now()
+	var key int64
+	switch mode {
+	case "annually":
+		key = int64(CalendarYear(now))
+	case "monthly":
+		key = MonthKey(now)
+	case "weekly":
+		key = WeekKey(now)
+	default:
+		key = 0
+	}
+	payload, fetchedAt, err = s.GetStatsYear(mode, key)
+	if err != nil || payload != "" {
 		return payload, fetchedAt, err
 	}
-	return s.GetStatsYear(mode, 0)
+	if mode == "overall" {
+		return "", 0, nil
+	}
+	err = s.DB.QueryRow(`SELECT payload, fetched_at FROM read_stats WHERE mode=? AND year>0 ORDER BY year DESC LIMIT 1`, mode).Scan(&payload, &fetchedAt)
+	if err == sql.ErrNoRows {
+		return "", 0, nil
+	}
+	return payload, fetchedAt, err
 }
 
 func (s *Store) GetStatsYear(mode string, year int64) (payload string, fetchedAt int64, err error) {

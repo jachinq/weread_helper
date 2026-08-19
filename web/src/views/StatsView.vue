@@ -6,7 +6,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
-import { fetchReportSnapshot, fetchReportYears, fetchStats } from '../api'
+import { fetchReportYears, fetchStats, fetchStatsSnapshot } from '../api'
 import type { StatsResponse } from '../types'
 
 use([CanvasRenderer, BarChart, GridComponent, TooltipComponent])
@@ -25,8 +25,8 @@ const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const stats = ref<StatsResponse | null>(null)
-const missingYear = ref(false)
-const fetchingYear = ref(false)
+const missingPeriod = ref(false)
+const fetchingPeriod = ref(false)
 const years = ref<number[]>([])
 let loadGen = 0
 const brokenCover = ref<Record<string, boolean>>({})
@@ -36,6 +36,48 @@ const mode = computed<ModeId>(() => {
   return modes.some((m) => m.id === q) ? (q as ModeId) : 'monthly'
 })
 
+function pad2(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function currentMonthStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`
+}
+
+function mondayOf(d: Date) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const off = (x.getDay() + 6) % 7
+  x.setDate(x.getDate() - off)
+  return x
+}
+
+function isoWeekStr(d: Date) {
+  const mon = mondayOf(d)
+  const thu = new Date(mon)
+  thu.setDate(mon.getDate() + 3)
+  const year = thu.getFullYear()
+  const start = mondayOf(new Date(year, 0, 4))
+  const week = Math.round((mon.getTime() - start.getTime()) / (24 * 60 * 60 * 1000) / 7) + 1
+  return `${year}-W${pad2(week)}`
+}
+
+function currentWeekStr() {
+  return isoWeekStr(new Date())
+}
+
+function parseIsoWeek(s: string): Date | null {
+  const m = /^(\d{4})-W(\d{2})$/.exec(s)
+  if (!m) return null
+  const year = Number(m[1])
+  const week = Number(m[2])
+  if (!Number.isFinite(year) || week < 1 || week > 53) return null
+  const start = mondayOf(new Date(year, 0, 4))
+  const d = new Date(start)
+  d.setDate(start.getDate() + (week - 1) * 7)
+  return d
+}
+
 function queryYearNum(): number | null {
   const raw = route.query.year
   const s = Array.isArray(raw) ? raw[0] : raw
@@ -44,12 +86,59 @@ function queryYearNum(): number | null {
   return null
 }
 
+function queryStr(key: string): string | null {
+  const raw = route.query[key]
+  const s = Array.isArray(raw) ? raw[0] : raw
+  return typeof s === 'string' && s ? s : null
+}
+
 const year = computed(() => queryYearNum() ?? years.value[0] ?? new Date().getFullYear())
+
+const month = computed(() => {
+  const q = queryStr('month')
+  if (q && /^\d{4}-\d{2}$/.test(q)) return q
+  return currentMonthStr()
+})
+
+const week = computed(() => {
+  const q = queryStr('week')
+  if (q && /^\d{4}-W\d{2}$/.test(q)) return q
+  return currentWeekStr()
+})
+
+const minYear = computed(() => {
+  if (!years.value.length) return 2018
+  return Math.min(...years.value)
+})
+
+const monthList = computed(() => {
+  const out: string[] = []
+  const now = new Date()
+  const endY = now.getFullYear()
+  const endM = now.getMonth() + 1
+  for (let y = minYear.value; y <= endY; y++) {
+    const last = y === endY ? endM : 12
+    for (let m = 1; m <= last; m++) out.push(`${y}-${pad2(m)}`)
+  }
+  return out
+})
+
+const weekList = computed(() => {
+  const out: string[] = []
+  const start = mondayOf(new Date(minYear.value, 0, 1))
+  const end = mondayOf(new Date())
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) {
+    out.push(isoWeekStr(d))
+  }
+  return out
+})
 
 function setMode(id: ModeId) {
   if (id === mode.value) return
   const query: Record<string, string> = { mode: id }
   if (id === 'annually') query.year = String(year.value)
+  if (id === 'monthly') query.month = month.value
+  if (id === 'weekly') query.week = week.value
   router.replace({ query })
 }
 
@@ -58,11 +147,24 @@ function setYear(y: number) {
   router.replace({ query: { mode: 'annually', year: String(y) } })
 }
 
+function setMonth(m: string) {
+  if (m === month.value && queryStr('month') === m) return
+  router.replace({ query: { mode: 'monthly', month: m } })
+}
+
+function setWeek(w: string) {
+  if (w === week.value && queryStr('week') === w) return
+  router.replace({ query: { mode: 'weekly', week: w } })
+}
+
 const yearsAsc = computed(() => [...years.value].sort((a, b) => a - b))
 
 const canPrevYear = computed(() => yearsAsc.value.some((y) => y < year.value))
-
 const canNextYear = computed(() => yearsAsc.value.some((y) => y > year.value))
+const canPrevMonth = computed(() => monthList.value.some((m) => m < month.value))
+const canNextMonth = computed(() => monthList.value.some((m) => m > month.value))
+const canPrevWeek = computed(() => weekList.value.some((w) => w < week.value))
+const canNextWeek = computed(() => weekList.value.some((w) => w > week.value))
 
 function stepYear(delta: number) {
   const list = yearsAsc.value
@@ -71,6 +173,34 @@ function stepYear(delta: number) {
   if (!candidates.length) return
   setYear(delta < 0 ? candidates[candidates.length - 1] : candidates[0])
 }
+
+function stepMonth(delta: number) {
+  const list = monthList.value
+  const candidates = delta < 0 ? list.filter((m) => m < month.value) : list.filter((m) => m > month.value)
+  if (!candidates.length) return
+  setMonth(delta < 0 ? candidates[candidates.length - 1] : candidates[0])
+}
+
+function stepWeek(delta: number) {
+  const list = weekList.value
+  const candidates = delta < 0 ? list.filter((w) => w < week.value) : list.filter((w) => w > week.value)
+  if (!candidates.length) return
+  setWeek(delta < 0 ? candidates[candidates.length - 1] : candidates[0])
+}
+
+const monthLabel = computed(() => {
+  const [y, m] = month.value.split('-').map(Number)
+  if (!y || !m) return month.value
+  return `${y}年${m}月`
+})
+
+const weekLabel = computed(() => {
+  const d = parseIsoWeek(week.value)
+  if (!d) return week.value
+  const end = new Date(d)
+  end.setDate(d.getDate() + 6)
+  return `${d.getMonth() + 1}/${d.getDate()}–${end.getMonth() + 1}/${end.getDate()}`
+})
 
 function asNum(v: unknown) {
   if (typeof v === 'number' && Number.isFinite(v)) return v
@@ -437,23 +567,33 @@ async function load() {
   const seq = ++loadGen
   const selectedMode = mode.value
   const selectedYear = year.value
+  const selectedMonth = month.value
+  const selectedWeek = week.value
   loading.value = true
-  fetchingYear.value = false
+  fetchingPeriod.value = false
   error.value = ''
-  missingYear.value = false
+  missingPeriod.value = false
   try {
-    let data = await fetchStats(selectedMode, selectedMode === 'annually' ? selectedYear : undefined)
+    const period =
+      selectedMode === 'annually'
+        ? { year: selectedYear }
+        : selectedMode === 'monthly'
+          ? { month: selectedMonth }
+          : selectedMode === 'weekly'
+            ? { week: selectedWeek }
+            : undefined
+    let data = await fetchStats(selectedMode, period)
     if (seq !== loadGen) return
-    if (data && 'missing' in data && data.missing && selectedMode === 'annually') {
-      fetchingYear.value = true
-      await fetchReportSnapshot(selectedYear)
+    if (data && 'missing' in data && data.missing && period) {
+      fetchingPeriod.value = true
+      await fetchStatsSnapshot(selectedMode, period)
       if (seq !== loadGen) return
-      data = await fetchStats(selectedMode, selectedYear)
+      data = await fetchStats(selectedMode, period)
       if (seq !== loadGen) return
       if (data && 'missing' in data && data.missing) {
-        missingYear.value = true
+        missingPeriod.value = true
         stats.value = null
-        error.value = `${selectedYear} 年快照拉取后仍不可用`
+        error.value = '该周期快照拉取后仍不可用'
         return
       }
     }
@@ -463,16 +603,16 @@ async function load() {
     if (seq !== loadGen) return
     error.value = e instanceof Error ? e.message : '加载失败'
     stats.value = null
-    missingYear.value = selectedMode === 'annually'
+    missingPeriod.value = selectedMode !== 'overall'
   } finally {
     if (seq !== loadGen) return
     loading.value = false
-    fetchingYear.value = false
+    fetchingPeriod.value = false
   }
 }
 
 watch(
-  () => [mode.value, year.value] as const,
+  () => [mode.value, year.value, month.value, week.value] as const,
   () => {
     void load()
   },
@@ -486,7 +626,7 @@ onMounted(async () => {
 <template>
   <section :aria-busy="loading">
     <h2 class="page-title">阅读统计</h2>
-    <p class="muted">时长按秒换算。周 / 月 / 累计读本地快照；切换年份时若本地没有该年数据，会向官方拉取并保存。</p>
+    <p class="muted">时长按秒换算。累计读本地快照；切换年 / 月 / 周时若本地没有该周期数据，会向官方拉取并保存。</p>
     <div class="modes" role="group" aria-label="统计周期">
       <button
         v-for="m in modes"
@@ -505,12 +645,22 @@ onMounted(async () => {
       <span class="year-step-label">{{ year }}</span>
       <button class="btn" type="button" :disabled="!canNextYear" aria-label="下一年" @click="stepYear(1)">›</button>
     </div>
+    <div v-else-if="mode === 'monthly'" class="year-step" role="group" aria-label="选择月份">
+      <button class="btn" type="button" :disabled="!canPrevMonth" aria-label="上一月" @click="stepMonth(-1)">‹</button>
+      <span class="year-step-label year-step-label-wide">{{ monthLabel }}</span>
+      <button class="btn" type="button" :disabled="!canNextMonth" aria-label="下一月" @click="stepMonth(1)">›</button>
+    </div>
+    <div v-else-if="mode === 'weekly'" class="year-step" role="group" aria-label="选择周">
+      <button class="btn" type="button" :disabled="!canPrevWeek" aria-label="上一周" @click="stepWeek(-1)">‹</button>
+      <span class="year-step-label year-step-label-wide">{{ weekLabel }}</span>
+      <button class="btn" type="button" :disabled="!canNextWeek" aria-label="下一周" @click="stepWeek(1)">›</button>
+    </div>
     <div v-if="error" class="error" role="alert">{{ error }}</div>
-    <p v-if="fetchingYear" class="muted">正在从官方拉取 {{ year }} 年阅读数据…</p>
+    <p v-if="fetchingPeriod" class="muted">正在从官方拉取该周期阅读数据…</p>
     <p v-else-if="loading" class="muted">正在汇总…</p>
-    <div v-else-if="missingYear" class="stats-block">
-      <p>未能取得 {{ year }} 年的官方阅读快照。</p>
-      <button class="btn btn-solid" type="button" :disabled="loading || fetchingYear" @click="load">
+    <div v-else-if="missingPeriod" class="stats-block">
+      <p>未能取得该周期的官方阅读快照。</p>
+      <button class="btn btn-solid" type="button" :disabled="loading || fetchingPeriod" @click="load">
         再试一次
       </button>
     </div>
@@ -574,7 +724,7 @@ onMounted(async () => {
         </div>
       </div>
       <div v-if="daily.names.length" class="chart">
-          <VChart :key="mode + '-' + year + '-month'" :option="chartOption" autoresize />
+          <VChart :key="mode + '-' + year + '-' + month + '-' + week" :option="chartOption" autoresize />
         <table class="sr-only">
           <caption>阅读时长趋势（{{ chartUnit }}）</caption>
           <thead>

@@ -47,14 +47,36 @@ export function fetchNotes(bookId: string) {
   return getJson<NotesResponse>(`/api/books/${encodeURIComponent(bookId)}/notes`)
 }
 
-export async function fetchStats(mode: string, year?: number) {
+export async function fetchStats(
+  mode: string,
+  period?: { year?: number; month?: string; week?: string },
+) {
   const q = new URLSearchParams({ mode })
-  if (mode === 'annually' && year) q.set('year', String(year))
+  if (mode === 'annually' && period?.year) q.set('year', String(period.year))
+  if (mode === 'monthly' && period?.month) q.set('month', period.month)
+  if (mode === 'weekly' && period?.week) q.set('week', period.week)
   const res = await fetch(`/api/stats?${q.toString()}`, { cache: 'no-store' })
   const data = await res.json().catch(() => ({}))
   if (res.status === 404 && (data as { missing?: boolean }).missing) {
     return data as StatsResponse & { missing: true }
   }
+  if (!res.ok) {
+    const msg = (data as { error?: string }).error || `请求失败 (${res.status})`
+    throw new Error(msg)
+  }
+  return data as StatsResponse
+}
+
+export async function fetchStatsSnapshot(mode: string, period: { year?: number; month?: string; week?: string }) {
+  const q = new URLSearchParams({ mode })
+  if (mode === 'annually' && period.year) q.set('year', String(period.year))
+  if (mode === 'monthly' && period.month) q.set('month', period.month)
+  if (mode === 'weekly' && period.week) q.set('week', period.week)
+  const res = await fetch(`/api/stats/fetch?${q.toString()}`, {
+    method: 'POST',
+    cache: 'no-store',
+  })
+  const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     const msg = (data as { error?: string }).error || `请求失败 (${res.status})`
     throw new Error(msg)

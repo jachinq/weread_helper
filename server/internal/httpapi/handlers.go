@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -41,6 +42,7 @@ func (s *Server) Register(r *gin.Engine) {
 	api.GET("/books/:bookId", s.book)
 	api.GET("/books/:bookId/notes", s.notes)
 	api.GET("/stats", s.stats)
+	api.POST("/stats/fetch", s.statsFetch)
 	api.GET("/report/years", s.reportYears)
 	api.GET("/report", s.reportGet)
 	api.POST("/report/fetch", s.reportFetch)
@@ -257,21 +259,15 @@ func (s *Server) stats(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "mode 必须是 weekly/monthly/annually/overall"})
 		return
 	}
-	var year *int
-	if mode == "annually" {
-		if raw := strings.TrimSpace(c.Query("year")); raw != "" {
-			y, ok := parseReportYear(raw)
-			if !ok {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "year 无效"})
-				return
-			}
-			year = &y
-		}
+	period, ok, errMsg := parseStatsPeriod(mode, c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+		return
 	}
 	var payload string
 	var err error
-	if year != nil {
-		payload, _, err = s.store.GetStatsYear("annually", int64(*year))
+	if period != nil {
+		payload, _, err = s.store.GetStatsYear(mode, *period)
 	} else {
 		payload, _, err = s.store.GetStats(mode)
 	}
@@ -280,13 +276,160 @@ func (s *Server) stats(c *gin.Context) {
 		return
 	}
 	if payload == "" {
-		if year != nil {
-			c.JSON(http.StatusNotFound, gin.H{"missing": true, "year": *year, "error": "本地尚无该年统计快照"})
+		if period != nil {
+			c.JSON(http.StatusNotFound, statsMissing(mode, *period))
 			return
 		}
 		c.JSON(http.StatusNotFound, gin.H{"error": "本地尚无统计数据，请先同步"})
 		return
 	}
+	writeStatsJSON(c, mode, payload, period)
+}
+
+func (s *Server) statsFetch(c *gin.Context) {
+	mode := c.DefaultQuery("mode", "")
+	switch mode {
+	case "weekly", "monthly", "annually":
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "mode 必须是 weekly/monthly/annually"})
+		return
+	}
+	period, ok, errMsg := parseStatsPeriod(mode, c)
+	if !ok || period == nil {
+		if errMsg == "" {
+			errMsg = "缺少 year / month / week"
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+		return
+	}
+	var err error
+	switch mode {
+	case "annually":
+		err = report.PullAnnual(s.client, s.store, int(*period))
+	case "monthly":
+		err = report.PullMonthly(s.client, s.store, *period)
+	case "weekly":
+		err = report.PullWeekly(s.client, s.store, *period)
+	}
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	payload, _, err := s.store.GetStatsYear(mode, *period)
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	if payload == "" {
+		c.JSON(http.StatusNotFound, statsMissing(mode, *period))
+		return
+	}
+	writeStatsJSON(c, mode, payload, period)
+}
+
+func parseStatsPeriod(mode string, c *gin.Context) (*int64, bool, string) {
+	switch mode {
+	case "annually":
+		raw := strings.TrimSpace(c.Query("year"))
+		if raw == "" {
+			return nil, true, ""
+		}
+		y, ok := parseReportYear(raw)
+		if !ok {
+			return nil, false, "year 无效"
+		}
+		v := int64(y)
+		return &v, true, ""
+	case "monthly":
+		raw := strings.TrimSpace(c.Query("month"))
+		if raw == "" {
+			return nil, true, ""
+		}
+		key, ok := parseStatsMonth(raw)
+		if !ok {
+			return nil, false, "month 无效"
+		}
+		return &key, true, ""
+	case "weekly":
+		raw := strings.TrimSpace(c.Query("week"))
+		if raw == "" {
+			return nil, true, ""
+		}
+		key, ok := parseStatsWeek(raw)
+		if !ok {
+			return nil, false, "week 无效"
+		}
+		return &key, true, ""
+	default:
+		return nil, true, ""
+	}
+}
+
+func parseStatsMonth(raw string) (int64, bool) {
+	t, err := time.ParseInLocation("2006-01", raw, store.Shanghai())
+	if err != nil {
+		return 0, false
+	}
+	cur := store.MonthKey(time.Now())
+	key := store.MonthKey(t)
+	if key < 201501 || key > cur {
+		return 0, false
+	}
+	return key, true
+}
+
+func parseStatsWeek(raw string) (int64, bool) {
+	loc := store.Shanghai()
+	var mon time.Time
+	if strings.Contains(raw, "W") || strings.Contains(raw, "w") {
+		var y, w int
+		n, err := fmt.Sscanf(strings.ToUpper(raw), "%d-W%d", &y, &w)
+		if err != nil || n != 2 || w < 1 || w > 53 || y < 2015 {
+			return 0, false
+		}
+		mon = isoWeekMonday(y, w)
+	} else {
+		t, err := time.ParseInLocation("2006-01-02", raw, loc)
+		if err != nil {
+			return 0, false
+		}
+		mon = store.WeekMonday(t)
+	}
+	if mon.IsZero() {
+		return 0, false
+	}
+	key := store.WeekKey(mon)
+	nowKey := store.WeekKey(time.Now())
+	if key < 20150101 || key > nowKey {
+		return 0, false
+	}
+	return key, true
+}
+
+func isoWeekMonday(year, week int) time.Time {
+	jan4 := time.Date(year, 1, 4, 0, 0, 0, 0, store.Shanghai())
+	mon := store.WeekMonday(jan4)
+	return mon.AddDate(0, 0, (week-1)*7)
+}
+
+func statsMissing(mode string, period int64) gin.H {
+	h := gin.H{"missing": true, "mode": mode, "error": "本地尚无该周期统计快照"}
+	switch mode {
+	case "annually":
+		h["year"] = int(period)
+	case "monthly":
+		t := store.TimeFromMonthKey(period)
+		h["month"] = t.Format("2006-01")
+	case "weekly":
+		t := store.TimeFromWeekKey(period)
+		iy, iw := t.ISOWeek()
+		h["week"] = fmt.Sprintf("%d-W%02d", iy, iw)
+		h["weekStart"] = t.Format("2006-01-02")
+	}
+	return h
+}
+
+func writeStatsJSON(c *gin.Context, mode, payload string, period *int64) {
 	var data map[string]any
 	if err := json.Unmarshal([]byte(payload), &data); err != nil {
 		writeErr(c, err)
@@ -297,10 +440,29 @@ func (s *Server) stats(c *gin.Context) {
 	data["totalReadTimeFormatted"] = formatSeconds(total)
 	data["dayAverageReadTimeFormatted"] = formatSeconds(avg)
 	data["mode"] = mode
-	if year != nil {
-		data["year"] = *year
-	} else if mode == "annually" {
-		data["year"] = store.YearFromPayload(payload, time.Now())
+	key := int64(0)
+	if period != nil {
+		key = *period
+	} else {
+		key = store.PeriodKeyFromPayload(mode, payload, time.Now())
+	}
+	switch mode {
+	case "annually":
+		data["year"] = int(key)
+	case "monthly":
+		t := store.TimeFromMonthKey(key)
+		if !t.IsZero() {
+			data["month"] = t.Format("2006-01")
+			data["year"] = t.Year()
+		}
+	case "weekly":
+		t := store.TimeFromWeekKey(key)
+		if !t.IsZero() {
+			iy, iw := t.ISOWeek()
+			data["week"] = fmt.Sprintf("%d-W%02d", iy, iw)
+			data["weekStart"] = t.Format("2006-01-02")
+			data["year"] = t.Year()
+		}
 	}
 	c.Header("Cache-Control", "no-store")
 	c.JSON(http.StatusOK, data)

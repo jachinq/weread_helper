@@ -74,6 +74,9 @@ export type StatsResponse = {
   rank?: unknown
   missing?: boolean
   year?: number
+  month?: string
+  week?: string
+  weekStart?: string
   [key: string]: unknown
 }
 

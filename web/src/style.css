@@ -903,6 +903,10 @@ a {
   line-height: 42px;
 }
 
+.year-step-label-wide {
+  min-width: 7.5em;
+}
+
 .modes .btn {
   border: 0;
   border-right: 1px solid color-mix(in srgb, var(--color-accent-2) 22%, transparent);

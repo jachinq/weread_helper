@@ -148,7 +148,8 @@ docker run --name weread -d -p 8080:8080 \
 - `GET /api/notebooks?count=&lastSort=`
 - `GET /api/books/:bookId`
 - `GET /api/books/:bookId/notes`
-- `GET /api/stats?mode=weekly|monthly|annually|overall`
+- `GET /api/stats?mode=weekly|monthly|annually|overall&year=&month=&week=`
+- `POST /api/stats/fetch?mode=&year=&month=&week=`
 - `GET /api/shelf`
 - `GET /api/sync/status`
 - `POST /api/sync?force=`

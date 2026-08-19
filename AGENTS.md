@@ -12,7 +12,7 @@
 - 同步仅由前端手动触发（`POST /api/sync`）。进程启动、定时器、读本地接口都不会自动开任务。
 - 设置里的间隔（默认 6h）只作提醒阈值：`/api/sync/status` 的 `stale` 表示距上次成功同步已超过该时长（或从未同步）。进入站点时前端据此引导用户点「同步」。
 - 增量：拉完 `/user/notebooks`，仅对计数/`sort`/`readingProgress` 变化或从未拉过笔记的书刷新章节/划线/想法（该书内全量覆盖）。
-- 书架、阅读统计每次同步整份覆盖。前端 GET 只读本地。
+- 书架每次同步整份覆盖。阅读统计同步写入当前周/月/年/累计；历史年/月/周在统计页切换时按需拉取，不覆盖其它周期。
 
 ### 笔记
 
@@ -29,7 +29,7 @@
 
 ### 阅读统计
 
-- 周期切换：本周 / 本月 / 本年 / 累计（对应 `weekly` / `monthly` / `annually` / `overall`）。
+- 周期切换：周 / 月 / 年 / 累计；年、月、周可步进到历史周期。本地无快照时按需向官方拉取并按周期键入库。
 - 展示总阅读时长、阅读天数、日均时长；时长按秒换算（后端附加 `*Formatted` 字段）。
 - 有 `dailyReadTimes` 时绘制分钟柱状图；有偏好分类则展示标签。
 - 前端路由：`/stats`。
@@ -57,7 +57,8 @@
 | POST | `/api/highlights/random` | 换一批，覆盖当日内存缓存 |
 | GET | `/api/books/:bookId` | 书籍信息 + 阅读进度（本地） |
 | GET | `/api/books/:bookId/notes` | 聚合章节、划线、想法（本地） |
-| GET | `/api/stats?mode=` | 阅读统计快照（本地） |
+| GET | `/api/stats?mode=&year=&month=&week=` | 阅读统计快照（本地；年/月/周可指定周期） |
+| POST | `/api/stats/fetch?mode=&year=&month=&week=` | 按需从官方拉取并保存该周期统计 |
 | GET | `/api/shelf` | 书架（本地） |
 | GET | `/api/sync/status` | 同步状态（含 `stale` 提醒阈值） |
 | POST | `/api/sync?force=` | 手动触发同步；`force=1` 刷新全部有笔记的书 |
@@ -86,7 +87,7 @@ web (Vite :5173)  --/api-->  server (Gin :8080 + SQLite)  --Bearer wrk-*-->  i.w
 - `errcode != 0` 或存在 `upgrade_info` 视为失败，不要当成功数据。
 - 划线接口名是 `/book/bookmarklist`，返回的是划线不是书签。
 - `reviewCount` = 想法，`noteCount` = 划线，`bookmarkCount` = 书签数量。
-- 读接口走本地库；写官方只发生在同步任务。
+- 读接口走本地库；写官方只发生在同步任务，以及统计页按需拉取历史年/月/周快照。
 
 ## 目录
 
@@ -98,7 +99,7 @@ web (Vite :5173)  --/api-->  server (Gin :8080 + SQLite)  --Bearer wrk-*-->  i.w
 - `server/internal/config`：环境变量
 - `server/internal/appcfg`：库内设置加载/保存
 - `server/internal/secret`：API Key 加解密与脱敏
-- `web/src/views`：`HomeView.vue`、`NotesList.vue`、`NoteDetail.vue`、`StatsView.vue`、`ShelfView.vue`、`SettingsView.vue`
+- `web/src/views`：`HomeView.vue`、`NotesList.vue`、`NoteDetail.vue`、`StatsView.vue`、`ReportView.vue`、`ShelfView.vue`、`SettingsView.vue`
 - `web/src/api.ts`：前端请求封装
 
 ## 本地运行
