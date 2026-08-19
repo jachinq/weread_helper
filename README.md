@@ -155,3 +155,7 @@ docker run --name weread -d -p 8080:8080 \
 - `POST /api/sync?force=`
 - `GET /api/settings`
 - `PUT /api/settings`
+
+## 协议
+
+本仓库采用 [MIT License](LICENSE)。
