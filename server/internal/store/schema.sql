@@ -56,9 +56,11 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 
 CREATE TABLE IF NOT EXISTS read_stats (
-  mode TEXT PRIMARY KEY,
+  mode TEXT NOT NULL,
+  year INTEGER NOT NULL DEFAULT 0,
   payload TEXT NOT NULL,
-  fetched_at INTEGER NOT NULL
+  fetched_at INTEGER NOT NULL,
+  PRIMARY KEY (mode, year)
 );
 
 CREATE TABLE IF NOT EXISTS sync_meta (

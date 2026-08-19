@@ -842,6 +842,20 @@ a {
   font-weight: 600;
 }
 
+.stat-metric + .stat-metric {
+  margin-left: 0.28em;
+}
+
+.stat-unit {
+  display: inline;
+  margin-left: 0.12em;
+  font-size: 0.52em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  vertical-align: 0.12em;
+  color: color-mix(in srgb, var(--lamp) 72%, var(--color-text-muted));
+}
+
 .modes {
   display: flex;
   gap: 0;
@@ -849,6 +863,44 @@ a {
   margin-bottom: 8px;
   border: 1px solid color-mix(in srgb, var(--color-accent-2) 22%, transparent);
   width: fit-content;
+}
+
+.modes + .modes {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.year-step {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0 0 12px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-2) 22%, transparent);
+  width: fit-content;
+}
+
+.year-step .btn {
+  border: 0;
+  min-width: 42px;
+  min-height: 42px;
+}
+
+.year-step .btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.year-step-label {
+  min-width: 4.5em;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  color: var(--lamp);
+  border-left: 1px solid color-mix(in srgb, var(--color-accent-2) 22%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--color-accent-2) 22%, transparent);
+  padding: 0 12px;
+  line-height: 42px;
 }
 
 .modes .btn {
@@ -1009,6 +1061,47 @@ a {
   font-style: normal;
   color: var(--color-text-muted);
   white-space: nowrap;
+}
+
+.cheer {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--lamp);
+}
+
+.word-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  align-items: baseline;
+  padding: 12px 4px 8px;
+  font-family: var(--font-display);
+  color: var(--color-text);
+}
+
+.holiday-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.holiday-list li {
+  display: grid;
+  grid-template-columns: 7em 7em 1fr;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent-2) 12%, transparent);
+  font-family: var(--font-ui);
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .holiday-list li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
 }
 
 .medal-list {

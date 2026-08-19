@@ -38,7 +38,12 @@ func Open(path string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
-	return &Store{DB: db}, nil
+	st := &Store{DB: db}
+	if err := st.migrateReadStatsYear(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("migrate read_stats: %w", err)
+	}
+	return st, nil
 }
 
 func (s *Store) Close() error {
@@ -467,19 +472,164 @@ func (s *Store) ListReviews(bookID string) ([]Review, error) {
 	return out, rows.Err()
 }
 
+func (s *Store) migrateReadStatsYear() error {
+	var n int
+	err := s.DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('read_stats') WHERE name='year'`).Scan(&n)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return nil
+	}
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(`CREATE TABLE read_stats_v2 (
+  mode TEXT NOT NULL,
+  year INTEGER NOT NULL DEFAULT 0,
+  payload TEXT NOT NULL,
+  fetched_at INTEGER NOT NULL,
+  PRIMARY KEY (mode, year)
+)`); err != nil {
+		return err
+	}
+	rows, err := tx.Query(`SELECT mode, payload, fetched_at FROM read_stats`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	now := time.Now()
+	for rows.Next() {
+		var mode, payload string
+		var fetchedAt int64
+		if err := rows.Scan(&mode, &payload, &fetchedAt); err != nil {
+			return err
+		}
+		year := int64(0)
+		if mode == "annually" {
+			year = int64(YearFromPayload(payload, time.Unix(fetchedAt, 0)))
+			if year <= 0 {
+				year = int64(CalendarYear(now))
+			}
+		}
+		if _, err := tx.Exec(`INSERT INTO read_stats_v2(mode, year, payload, fetched_at) VALUES (?,?,?,?)
+ON CONFLICT(mode, year) DO UPDATE SET payload=excluded.payload, fetched_at=excluded.fetched_at`,
+			mode, year, payload, fetchedAt); err != nil {
+			return err
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DROP TABLE read_stats`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`ALTER TABLE read_stats_v2 RENAME TO read_stats`); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *Store) PutStats(mode, payload string) error {
-	_, err := s.DB.Exec(`INSERT INTO read_stats(mode, payload, fetched_at) VALUES (?,?,?)
-ON CONFLICT(mode) DO UPDATE SET payload=excluded.payload, fetched_at=excluded.fetched_at`,
-		mode, payload, time.Now().Unix())
+	year := int64(0)
+	if mode == "annually" {
+		year = int64(YearFromPayload(payload, time.Now()))
+	}
+	return s.PutStatsYear(mode, year, payload)
+}
+
+func (s *Store) PutStatsYear(mode string, year int64, payload string) error {
+	_, err := s.DB.Exec(`INSERT INTO read_stats(mode, year, payload, fetched_at) VALUES (?,?,?,?)
+ON CONFLICT(mode, year) DO UPDATE SET payload=excluded.payload, fetched_at=excluded.fetched_at`,
+		mode, year, payload, time.Now().Unix())
 	return err
 }
 
 func (s *Store) GetStats(mode string) (payload string, fetchedAt int64, err error) {
-	err = s.DB.QueryRow(`SELECT payload, fetched_at FROM read_stats WHERE mode=?`, mode).Scan(&payload, &fetchedAt)
+	if mode == "annually" {
+		payload, fetchedAt, err = s.GetStatsYear(mode, int64(CalendarYear(time.Now())))
+		if err != nil || payload != "" {
+			return payload, fetchedAt, err
+		}
+		err = s.DB.QueryRow(`SELECT payload, fetched_at FROM read_stats WHERE mode=? ORDER BY year DESC LIMIT 1`, mode).Scan(&payload, &fetchedAt)
+		if err == sql.ErrNoRows {
+			return "", 0, nil
+		}
+		return payload, fetchedAt, err
+	}
+	return s.GetStatsYear(mode, 0)
+}
+
+func (s *Store) GetStatsYear(mode string, year int64) (payload string, fetchedAt int64, err error) {
+	err = s.DB.QueryRow(`SELECT payload, fetched_at FROM read_stats WHERE mode=? AND year=?`, mode, year).Scan(&payload, &fetchedAt)
 	if err == sql.ErrNoRows {
 		return "", 0, nil
 	}
 	return payload, fetchedAt, err
+}
+
+func (s *Store) ListAnnualYears() ([]int, error) {
+	rows, err := s.DB.Query(`SELECT year FROM read_stats WHERE mode='annually' AND year>0 ORDER BY year DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []int
+	for rows.Next() {
+		var y int
+		if err := rows.Scan(&y); err != nil {
+			return nil, err
+		}
+		out = append(out, y)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) NoteTimeRange() (minTs, maxTs int64, err error) {
+	err = s.DB.QueryRow(`SELECT COALESCE(MIN(ts),0), COALESCE(MAX(ts),0) FROM (
+  SELECT create_time AS ts FROM highlights WHERE create_time>0
+  UNION ALL
+  SELECT create_time AS ts FROM reviews WHERE create_time>0
+)`).Scan(&minTs, &maxTs)
+	return minTs, maxTs, err
+}
+
+type YearNote struct {
+	Kind       string
+	ID         string
+	BookID     string
+	CreateTime int64
+	Title      string
+	Author     string
+	Cover      string
+	InfoJSON   string
+}
+
+func (s *Store) ListYearNotes(fromTs, toTs int64) ([]YearNote, error) {
+	rows, err := s.DB.Query(`
+SELECT 'highlight', h.bookmark_id, h.book_id, h.create_time, b.title, b.author, b.cover, b.info_json
+FROM highlights h JOIN books b ON b.book_id=h.book_id
+WHERE h.create_time>=? AND h.create_time<?
+UNION ALL
+SELECT 'review', r.review_id, r.book_id, r.create_time, b.title, b.author, b.cover, b.info_json
+FROM reviews r JOIN books b ON b.book_id=r.book_id
+WHERE r.create_time>=? AND r.create_time<?
+ORDER BY 4 ASC`, fromTs, toTs, fromTs, toTs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []YearNote
+	for rows.Next() {
+		var n YearNote
+		if err := rows.Scan(&n.Kind, &n.ID, &n.BookID, &n.CreateTime, &n.Title, &n.Author, &n.Cover, &n.InfoJSON); err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) Meta(key string) (string, error) {

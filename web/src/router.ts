@@ -21,6 +21,13 @@ export const router = createRouter({
     { path: '/notes', component: NotesList, meta: { title: '笔记' } },
     { path: '/notes/:bookId', component: NoteDetail, meta: { title: '笔记详情' } },
     { path: '/stats', component: StatsView, meta: { title: '阅读统计' } },
+    {
+      path: '/report',
+      redirect: (to) => ({
+        path: '/stats',
+        query: { mode: 'annually', ...(typeof to.query.year === 'string' ? { year: to.query.year } : {}) },
+      }),
+    },
     { path: '/shelf', component: ShelfView, meta: { title: '书架' } },
     { path: '/settings', component: SettingsView, meta: { title: '设置' } },
   ],

@@ -6,15 +6,15 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
-import { fetchStats } from '../api'
+import { fetchReportSnapshot, fetchReportYears, fetchStats } from '../api'
 import type { StatsResponse } from '../types'
 
 use([CanvasRenderer, BarChart, GridComponent, TooltipComponent])
 
 const modes = [
-  { id: 'weekly', label: '本周' },
-  { id: 'monthly', label: '本月' },
-  { id: 'annually', label: '本年' },
+  { id: 'weekly', label: '周' },
+  { id: 'monthly', label: '月' },
+  { id: 'annually', label: '年' },
   { id: 'overall', label: '累计' },
 ] as const
 
@@ -25,6 +25,10 @@ const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const stats = ref<StatsResponse | null>(null)
+const missingYear = ref(false)
+const fetchingYear = ref(false)
+const years = ref<number[]>([])
+let loadGen = 0
 const brokenCover = ref<Record<string, boolean>>({})
 
 const mode = computed<ModeId>(() => {
@@ -32,9 +36,40 @@ const mode = computed<ModeId>(() => {
   return modes.some((m) => m.id === q) ? (q as ModeId) : 'monthly'
 })
 
+function queryYearNum(): number | null {
+  const raw = route.query.year
+  const s = Array.isArray(raw) ? raw[0] : raw
+  const n = Number(s)
+  if (Number.isFinite(n) && n >= 2015) return n
+  return null
+}
+
+const year = computed(() => queryYearNum() ?? years.value[0] ?? new Date().getFullYear())
+
 function setMode(id: ModeId) {
   if (id === mode.value) return
-  router.replace({ query: { ...route.query, mode: id } })
+  const query: Record<string, string> = { mode: id }
+  if (id === 'annually') query.year = String(year.value)
+  router.replace({ query })
+}
+
+function setYear(y: number) {
+  if (y === year.value && queryYearNum() === y) return
+  router.replace({ query: { mode: 'annually', year: String(y) } })
+}
+
+const yearsAsc = computed(() => [...years.value].sort((a, b) => a - b))
+
+const canPrevYear = computed(() => yearsAsc.value.some((y) => y < year.value))
+
+const canNextYear = computed(() => yearsAsc.value.some((y) => y > year.value))
+
+function stepYear(delta: number) {
+  const list = yearsAsc.value
+  if (!list.length) return
+  const candidates = delta < 0 ? list.filter((y) => y < year.value) : list.filter((y) => y > year.value)
+  if (!candidates.length) return
+  setYear(delta < 0 ? candidates[candidates.length - 1] : candidates[0])
 }
 
 function asNum(v: unknown) {
@@ -51,13 +86,35 @@ function obj(v: unknown): Record<string, unknown> | null {
   return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
 }
 
-function formatSeconds(sec: number) {
-  if (sec <= 0) return '0 分钟'
+type DurationPart = { n: string; unit: string }
+
+function durationParts(sec: number): DurationPart[] {
+  if (sec <= 0) return [{ n: '0', unit: '分钟' }]
   const h = Math.floor(sec / 3600)
   const m = Math.floor((sec % 3600) / 60)
-  if (h > 0 && m > 0) return `${h} 小时 ${m} 分钟`
-  if (h > 0) return `${h} 小时`
-  return `${m} 分钟`
+  const parts: DurationPart[] = []
+  if (h > 0) parts.push({ n: String(h), unit: '小时' })
+  if (m > 0 || h === 0) parts.push({ n: String(m), unit: '分钟' })
+  return parts
+}
+
+function parseDurationParts(formatted: string | undefined, sec: number): DurationPart[] {
+  if (formatted) {
+    const parts: DurationPart[] = []
+    const re = /(\d+)\s*(小时|分钟)/g
+    let m: RegExpExecArray | null
+    while ((m = re.exec(formatted))) {
+      parts.push({ n: m[1], unit: m[2] })
+    }
+    if (parts.length) return parts
+  }
+  return durationParts(sec)
+}
+
+function formatSeconds(sec: number) {
+  return durationParts(sec)
+    .map((p) => `${p.n} ${p.unit}`)
+    .join(' ')
 }
 
 function axisLabel(ts: number, i: number) {
@@ -357,32 +414,79 @@ const medals = computed(() => {
   return out
 })
 
-const wrRead = computed(() => formatSeconds(asNum(stats.value?.wrReadTime)))
-const wrListen = computed(() => formatSeconds(asNum(stats.value?.wrListenTime)))
+const wrRead = computed(() => durationParts(asNum(stats.value?.wrReadTime)))
+const wrListen = computed(() => durationParts(asNum(stats.value?.wrListenTime)))
 const hasWr = computed(() => asNum(stats.value?.wrReadTime) > 0 || asNum(stats.value?.wrListenTime) > 0)
+const totalReadParts = computed(() =>
+  parseDurationParts(stats.value?.totalReadTimeFormatted, asNum(stats.value?.totalReadTime)),
+)
+const dayAvgParts = computed(() =>
+  parseDurationParts(stats.value?.dayAverageReadTimeFormatted, asNum(stats.value?.dayAverageReadTime)),
+)
 
-async function load() {
-  loading.value = true
-  error.value = ''
+async function loadYears() {
   try {
-    stats.value = await fetchStats(mode.value)
-    brokenCover.value = {}
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : '加载失败'
-    stats.value = null
-  } finally {
-    loading.value = false
+    const meta = await fetchReportYears()
+    years.value = meta.years?.length ? meta.years : [meta.current]
+  } catch {
+    years.value = [new Date().getFullYear()]
   }
 }
 
-watch(mode, load)
-onMounted(load)
+async function load() {
+  const seq = ++loadGen
+  const selectedMode = mode.value
+  const selectedYear = year.value
+  loading.value = true
+  fetchingYear.value = false
+  error.value = ''
+  missingYear.value = false
+  try {
+    let data = await fetchStats(selectedMode, selectedMode === 'annually' ? selectedYear : undefined)
+    if (seq !== loadGen) return
+    if (data && 'missing' in data && data.missing && selectedMode === 'annually') {
+      fetchingYear.value = true
+      await fetchReportSnapshot(selectedYear)
+      if (seq !== loadGen) return
+      data = await fetchStats(selectedMode, selectedYear)
+      if (seq !== loadGen) return
+      if (data && 'missing' in data && data.missing) {
+        missingYear.value = true
+        stats.value = null
+        error.value = `${selectedYear} 年快照拉取后仍不可用`
+        return
+      }
+    }
+    stats.value = data
+    brokenCover.value = {}
+  } catch (e) {
+    if (seq !== loadGen) return
+    error.value = e instanceof Error ? e.message : '加载失败'
+    stats.value = null
+    missingYear.value = selectedMode === 'annually'
+  } finally {
+    if (seq !== loadGen) return
+    loading.value = false
+    fetchingYear.value = false
+  }
+}
+
+watch(
+  () => [mode.value, year.value] as const,
+  () => {
+    void load()
+  },
+)
+onMounted(async () => {
+  await loadYears()
+  await load()
+})
 </script>
 
 <template>
   <section :aria-busy="loading">
     <h2 class="page-title">阅读统计</h2>
-    <p class="muted">时长按秒换算，切换周期会读取本地快照，不会打官方接口。</p>
+    <p class="muted">时长按秒换算。周 / 月 / 累计读本地快照；切换年份时若本地没有该年数据，会向官方拉取并保存。</p>
     <div class="modes" role="group" aria-label="统计周期">
       <button
         v-for="m in modes"
@@ -396,8 +500,20 @@ onMounted(load)
         {{ m.label }}
       </button>
     </div>
+    <div v-if="mode === 'annually' && years.length" class="year-step" role="group" aria-label="选择年份">
+      <button class="btn" type="button" :disabled="!canPrevYear" aria-label="上一年" @click="stepYear(-1)">‹</button>
+      <span class="year-step-label">{{ year }}</span>
+      <button class="btn" type="button" :disabled="!canNextYear" aria-label="下一年" @click="stepYear(1)">›</button>
+    </div>
     <div v-if="error" class="error" role="alert">{{ error }}</div>
-    <p v-if="loading" class="muted">正在汇总…</p>
+    <p v-if="fetchingYear" class="muted">正在从官方拉取 {{ year }} 年阅读数据…</p>
+    <p v-else-if="loading" class="muted">正在汇总…</p>
+    <div v-else-if="missingYear" class="stats-block">
+      <p>未能取得 {{ year }} 年的官方阅读快照。</p>
+      <button class="btn btn-solid" type="button" :disabled="loading || fetchingYear" @click="load">
+        再试一次
+      </button>
+    </div>
     <template v-else-if="stats">
       <p v-if="compareText || rankText || stats.preferCategoryWord || stats.preferTimeWord" class="stats-lead">
         <span v-if="compareText" :class="compareUp ? 'up' : 'down'">{{ compareText }}</span>
@@ -408,7 +524,11 @@ onMounted(load)
       <div class="stats-row">
         <div class="stat">
           总阅读时长
-          <b>{{ stats.totalReadTimeFormatted || formatSeconds(asNum(stats.totalReadTime)) }}</b>
+          <b>
+            <span v-for="(p, i) in totalReadParts" :key="i" class="stat-metric">
+              {{ p.n }}<span class="stat-unit">{{ p.unit }}</span>
+            </span>
+          </b>
         </div>
         <div class="stat">
           阅读天数
@@ -416,19 +536,31 @@ onMounted(load)
         </div>
         <div class="stat">
           日均时长
-          <b>{{ stats.dayAverageReadTimeFormatted || formatSeconds(asNum(stats.dayAverageReadTime)) }}</b>
+          <b>
+            <span v-for="(p, i) in dayAvgParts" :key="i" class="stat-metric">
+              {{ p.n }}<span class="stat-unit">{{ p.unit }}</span>
+            </span>
+          </b>
         </div>
         <div v-if="hasWr" class="stat">
           文字阅读
-          <b>{{ wrRead }}</b>
+          <b>
+            <span v-for="(p, i) in wrRead" :key="i" class="stat-metric">
+              {{ p.n }}<span class="stat-unit">{{ p.unit }}</span>
+            </span>
+          </b>
         </div>
         <div v-if="hasWr" class="stat">
           听书
-          <b>{{ wrListen }}</b>
+          <b>
+            <span v-for="(p, i) in wrListen" :key="i" class="stat-metric">
+              {{ p.n }}<span class="stat-unit">{{ p.unit }}</span>
+            </span>
+          </b>
         </div>
         <div v-if="typeof stats.readRate === 'number'" class="stat">
           阅读超越
-          <b>{{ stats.readRate }}%</b>
+          <b>{{ stats.readRate }}<span class="stat-unit">%</span></b>
         </div>
         <div v-if="typeof stats.authorCount === 'number'" class="stat">
           读过作者
@@ -442,7 +574,7 @@ onMounted(load)
         </div>
       </div>
       <div v-if="daily.names.length" class="chart">
-        <VChart :option="chartOption" autoresize />
+          <VChart :key="mode + '-' + year + '-month'" :option="chartOption" autoresize />
         <table class="sr-only">
           <caption>阅读时长趋势（{{ chartUnit }}）</caption>
           <thead>
@@ -503,7 +635,7 @@ onMounted(load)
         </ol>
       </section>
       <section v-if="preferBooks.length" class="stats-block">
-        <h3 class="page-title">偏好书票</h3>
+        <h3 class="page-title">偏好书籍</h3>
         <ul class="prefer-books">
           <li v-for="book in preferBooks" :key="book.label + book.bookId">
             <component

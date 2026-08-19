@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jachin/weread-helper/internal/conv"
+	"github.com/jachin/weread-helper/internal/report"
 	"github.com/jachin/weread-helper/internal/store"
 	"github.com/jachin/weread-helper/internal/syncjob"
 	"github.com/jachin/weread-helper/internal/weread"
@@ -40,6 +41,9 @@ func (s *Server) Register(r *gin.Engine) {
 	api.GET("/books/:bookId", s.book)
 	api.GET("/books/:bookId/notes", s.notes)
 	api.GET("/stats", s.stats)
+	api.GET("/report/years", s.reportYears)
+	api.GET("/report", s.reportGet)
+	api.POST("/report/fetch", s.reportFetch)
 	api.GET("/shelf", s.shelf)
 	api.GET("/sync/status", s.syncStatus)
 	api.POST("/sync", s.syncStart)
@@ -253,12 +257,33 @@ func (s *Server) stats(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "mode 必须是 weekly/monthly/annually/overall"})
 		return
 	}
-	payload, _, err := s.store.GetStats(mode)
+	var year *int
+	if mode == "annually" {
+		if raw := strings.TrimSpace(c.Query("year")); raw != "" {
+			y, ok := parseReportYear(raw)
+			if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "year 无效"})
+				return
+			}
+			year = &y
+		}
+	}
+	var payload string
+	var err error
+	if year != nil {
+		payload, _, err = s.store.GetStatsYear("annually", int64(*year))
+	} else {
+		payload, _, err = s.store.GetStats(mode)
+	}
 	if err != nil {
 		writeErr(c, err)
 		return
 	}
 	if payload == "" {
+		if year != nil {
+			c.JSON(http.StatusNotFound, gin.H{"missing": true, "year": *year, "error": "本地尚无该年统计快照"})
+			return
+		}
 		c.JSON(http.StatusNotFound, gin.H{"error": "本地尚无统计数据，请先同步"})
 		return
 	}
@@ -272,7 +297,78 @@ func (s *Server) stats(c *gin.Context) {
 	data["totalReadTimeFormatted"] = formatSeconds(total)
 	data["dayAverageReadTimeFormatted"] = formatSeconds(avg)
 	data["mode"] = mode
+	if year != nil {
+		data["year"] = *year
+	} else if mode == "annually" {
+		data["year"] = store.YearFromPayload(payload, time.Now())
+	}
+	c.Header("Cache-Control", "no-store")
 	c.JSON(http.StatusOK, data)
+}
+
+func (s *Server) reportYears(c *gin.Context) {
+	years, cached, current, err := report.YearsMeta(s.store)
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	if years == nil {
+		years = []int{}
+	}
+	if cached == nil {
+		cached = []int{}
+	}
+	c.JSON(http.StatusOK, gin.H{"years": years, "cached": cached, "current": current})
+}
+
+func (s *Server) reportGet(c *gin.Context) {
+	year, ok := parseReportYear(c.Query("year"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "year 无效"})
+		return
+	}
+	rep, err := report.Build(s.store, year)
+	if err != nil {
+		var miss *report.MissingSnapshotError
+		if errors.As(err, &miss) {
+			c.JSON(http.StatusNotFound, gin.H{"missing": true, "year": miss.Year, "error": miss.Error()})
+			return
+		}
+		writeErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, rep)
+}
+
+func (s *Server) reportFetch(c *gin.Context) {
+	year, ok := parseReportYear(c.Query("year"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "year 无效"})
+		return
+	}
+	if err := report.PullAnnual(s.client, s.store, year); err != nil {
+		writeErr(c, err)
+		return
+	}
+	rep, err := report.Build(s.store, year)
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	c.JSON(http.StatusOK, rep)
+}
+
+func parseReportYear(raw string) (int, bool) {
+	cur := store.CalendarYear(time.Now())
+	if strings.TrimSpace(raw) == "" {
+		return cur, true
+	}
+	y, err := strconv.Atoi(raw)
+	if err != nil || y < 2015 || y > cur+1 {
+		return 0, false
+	}
+	return y, true
 }
 
 func (s *Server) shelf(c *gin.Context) {

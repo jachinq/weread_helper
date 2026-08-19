@@ -56,6 +56,10 @@ pnpm run build
 
 托盘菜单：显示主窗口、开机自启、退出。关闭窗口会隐藏到托盘。开机自启写入当前用户 Run 项（指向当时的 exe 绝对路径，移动文件夹后需重新勾选）。
 
+### 便携打包
+
+产物一般在 `desktop/src-tauri/target/release/`。便携使用时请保持 `weread-helper-desktop.exe`、sidecar（`weread-helper.exe`）与 `web/` 一起打包，解压后直接运行 `weread-helper-desktop.exe`，数据会生成在同目录 `data/` 下。
+
 ## Docker 部署
 
 镜像为多阶段构建：Node 打前端、Go 静态编译后端（`CGO_ENABLED=0` + 去符号），最终仅保留 Alpine 运行层（CA 证书、时区、`su-exec`）。容器内由同一进程提供 `/api` 与前端静态文件。SQLite 与加密密钥文件写在数据卷 `/data`。

@@ -72,7 +72,58 @@ export type StatsResponse = {
   compare?: unknown
   medals?: unknown
   rank?: unknown
+  missing?: boolean
+  year?: number
   [key: string]: unknown
+}
+
+export type ReportBookCard = {
+  bookId?: string
+  title: string
+  author?: string
+  cover?: string
+  hint?: string
+}
+
+export type YearReport = {
+  year: number
+  fetchedAt?: number
+  missing?: boolean
+  overview: {
+    totalReadTime: number
+    totalReadTimeFormatted: string
+    dayAverageReadTime: number
+    dayAverageReadTimeFormatted: string
+    readDays: number
+    booksRead?: string
+    booksFinished?: string
+    noteCount: number
+    highlightCount?: number
+    reviewCount?: number
+  }
+  months: { month: number; seconds: number; label: string }[]
+  peakMonth?: { month: number; seconds: number; label: string }
+  cheer?: string
+  favorite?: ReportBookCard
+  firstRead?: ReportBookCard
+  mostHighlights?: ReportBookCard
+  rarest?: ReportBookCard
+  immersed?: ReportBookCard
+  lateNight?: ReportBookCard
+  holidays?: { name: string; date: string; read: boolean; bookKnown?: boolean; book?: ReportBookCard }[]
+  monthBooks?: { month: number; book: ReportBookCard; count: number }[]
+  categories?: { name: string; count: number }[]
+  hours?: number[]
+  hoursUnit?: string
+  authors?: { name: string; count: number }[]
+  copyrights?: { name: string; count: number }[]
+  copyrightSource?: string
+}
+
+export type ReportYears = {
+  years: number[]
+  cached: number[]
+  current: number
 }
 
 export type SyncStatus = {
