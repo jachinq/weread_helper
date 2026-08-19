@@ -436,7 +436,13 @@ func writeStatsJSON(c *gin.Context, mode, payload string, period *int64) {
 		return
 	}
 	total, _ := conv.AsInt64(data["totalReadTime"])
-	avg, _ := conv.AsInt64(data["dayAverageReadTime"])
+	avg, avgOK := conv.AsInt64(data["dayAverageReadTime"])
+	days, _ := conv.AsInt64(data["readDays"])
+	// 官方 /readdata/detail 在 overall 下不返回 dayAverageReadTime
+	if (!avgOK || avg <= 0) && total > 0 && days > 0 {
+		avg = total / days
+		data["dayAverageReadTime"] = avg
+	}
 	data["totalReadTimeFormatted"] = formatSeconds(total)
 	data["dayAverageReadTimeFormatted"] = formatSeconds(avg)
 	data["mode"] = mode
