@@ -5,6 +5,7 @@ import { applySiteTitle } from '../site'
 import { applyTheme } from '../themes/apply'
 import { THEMES } from '../themes/registry'
 import type { ColorScheme, ThemeId } from '../themes/types'
+import { HIGHLIGHT_DISPLAYS, normalizeHighlightDisplay, type HighlightDisplay } from '../highlights/types'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -19,6 +20,7 @@ const apiKey = ref('')
 const apiKeyMasked = ref('')
 const themeId = ref<ThemeId>('walnut')
 const colorScheme = ref<ColorScheme>('dark')
+const highlightDisplay = ref<HighlightDisplay>('card')
 const ready = ref(false)
 
 function preview(id: ThemeId, scheme: ColorScheme) {
@@ -38,6 +40,11 @@ function pickScheme(scheme: ColorScheme) {
   void persistAppearance()
 }
 
+function pickHighlightDisplay(id: HighlightDisplay) {
+  highlightDisplay.value = id
+  void persistAppearance()
+}
+
 async function persistAppearance() {
   if (!ready.value || loading.value || saving.value) return
   saving.value = true
@@ -52,11 +59,12 @@ async function persistAppearance() {
       siteTitle: siteName.value.trim(),
       theme: themeId.value,
       colorScheme: colorScheme.value,
+      highlightDisplay: highlightDisplay.value,
     })
     apiKey.value = ''
     apiKeyMasked.value = data.apiKeyMasked || ''
     applyTheme(data.theme, data.colorScheme)
-    ok.value = '主题已保存'
+    ok.value = '外观已保存'
   } catch (e) {
     error.value = e instanceof Error ? e.message : '保存失败'
   } finally {
@@ -78,6 +86,7 @@ async function load() {
     apiKey.value = ''
     themeId.value = (THEMES.find((t) => t.id === data.theme)?.id ?? 'walnut') as ThemeId
     colorScheme.value = data.colorScheme === 'light' ? 'light' : 'dark'
+    highlightDisplay.value = normalizeHighlightDisplay(data.highlightDisplay)
     applySiteTitle(data.siteTitle)
     applyTheme(themeId.value, colorScheme.value)
     ready.value = true
@@ -101,6 +110,7 @@ async function onSave() {
       siteTitle: siteName.value.trim(),
       theme: themeId.value,
       colorScheme: colorScheme.value,
+      highlightDisplay: highlightDisplay.value,
     })
     apiKey.value = ''
     apiKeyMasked.value = data.apiKeyMasked || ''
@@ -120,7 +130,7 @@ onMounted(load)
 <template>
   <section :aria-busy="loading">
     <h2 class="page-title">设置</h2>
-    <p class="muted">配置写入本地库。切换主题会立即保存。API Key 加密存储；输入框留空则不改现有密钥。保存 Key 后请到顶栏点同步。</p>
+    <p class="muted">配置写入本地库。切换主题、明暗与摘抄展示会立即保存。API Key 加密存储；输入框留空则不改现有密钥。保存 Key 后请到顶栏点同步。</p>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <p v-if="ok" class="banner" role="status">{{ ok }}</p>
@@ -160,6 +170,23 @@ onMounted(load)
           </button>
           <button type="button" :aria-pressed="colorScheme === 'dark'" :class="{ active: colorScheme === 'dark' }" @click="pickScheme('dark')">
             黑暗
+          </button>
+        </div>
+
+        <p class="settings-label">摘抄展示</p>
+        <div class="display-grid" role="listbox" aria-label="摘抄展示">
+          <button
+            v-for="opt in HIGHLIGHT_DISPLAYS"
+            :key="opt.id"
+            type="button"
+            class="display-opt"
+            role="option"
+            :aria-selected="highlightDisplay === opt.id"
+            :class="{ active: highlightDisplay === opt.id }"
+            @click="pickHighlightDisplay(opt.id)"
+          >
+            <span class="display-opt-label">{{ opt.label }}</span>
+            <span class="display-opt-hint">{{ opt.hint }}</span>
           </button>
         </div>
       </fieldset>

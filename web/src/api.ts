@@ -146,6 +146,7 @@ export function saveSettings(body: {
   siteTitle: string
   theme: string
   colorScheme: string
+  highlightDisplay: string
 }) {
   return fetch('/api/settings', {
     method: 'PUT',

@@ -10,13 +10,14 @@ import (
 )
 
 type settingsDTO struct {
-	APIKeyMasked string `json:"apiKeyMasked"`
-	SkillVersion string `json:"skillVersion"`
-	GatewayURL   string `json:"gatewayUrl"`
-	SyncInterval string `json:"syncInterval"`
-	SiteTitle    string `json:"siteTitle"`
-	Theme        string `json:"theme"`
-	ColorScheme  string `json:"colorScheme"`
+	APIKeyMasked     string `json:"apiKeyMasked"`
+	SkillVersion     string `json:"skillVersion"`
+	GatewayURL       string `json:"gatewayUrl"`
+	SyncInterval     string `json:"syncInterval"`
+	SiteTitle        string `json:"siteTitle"`
+	Theme            string `json:"theme"`
+	ColorScheme      string `json:"colorScheme"`
+	HighlightDisplay string `json:"highlightDisplay"`
 }
 
 func (s *Server) settingsPublic() (settingsDTO, error) {
@@ -45,13 +46,14 @@ func (s *Server) settingsPublic() (settingsDTO, error) {
 		title = appcfg.DefaultSiteTitle
 	}
 	return settingsDTO{
-		APIKeyMasked: secret.MaskAPIKey(plain),
-		SkillVersion: skill,
-		GatewayURL:   gw,
-		SyncInterval: interval,
-		SiteTitle:    title,
-		Theme:        appcfg.NormalizeTheme(row.Theme),
-		ColorScheme:  appcfg.NormalizeColorScheme(row.ColorScheme),
+		APIKeyMasked:     secret.MaskAPIKey(plain),
+		SkillVersion:     skill,
+		GatewayURL:       gw,
+		SyncInterval:     interval,
+		SiteTitle:        title,
+		Theme:            appcfg.NormalizeTheme(row.Theme),
+		ColorScheme:      appcfg.NormalizeColorScheme(row.ColorScheme),
+		HighlightDisplay: appcfg.NormalizeHighlightDisplay(row.HighlightDisplay),
 	}, nil
 }
 
@@ -65,13 +67,14 @@ func (s *Server) settingsGet(c *gin.Context) {
 }
 
 type settingsPutBody struct {
-	APIKey       string `json:"apiKey"`
-	SkillVersion string `json:"skillVersion"`
-	GatewayURL   string `json:"gatewayUrl"`
-	SyncInterval string `json:"syncInterval"`
-	SiteTitle    string `json:"siteTitle"`
-	Theme        string `json:"theme"`
-	ColorScheme  string `json:"colorScheme"`
+	APIKey           string `json:"apiKey"`
+	SkillVersion     string `json:"skillVersion"`
+	GatewayURL       string `json:"gatewayUrl"`
+	SyncInterval     string `json:"syncInterval"`
+	SiteTitle        string `json:"siteTitle"`
+	Theme            string `json:"theme"`
+	ColorScheme      string `json:"colorScheme"`
+	HighlightDisplay string `json:"highlightDisplay"`
 }
 
 func (s *Server) settingsPut(c *gin.Context) {
@@ -102,6 +105,7 @@ func (s *Server) settingsPut(c *gin.Context) {
 		body.SiteTitle,
 		body.Theme,
 		body.ColorScheme,
+		body.HighlightDisplay,
 		body.APIKey,
 		keep,
 		current,

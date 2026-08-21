@@ -12,13 +12,22 @@ import (
 )
 
 const (
-	DefaultSkillVersion = "1.0.4"
-	DefaultGatewayURL   = "https://i.weread.qq.com/api/agent/gateway"
-	DefaultSyncInterval = "6h"
-	DefaultSiteTitle    = "纸间笔记"
-	DefaultTheme        = "walnut"
-	DefaultColorScheme  = "dark"
+	DefaultSkillVersion     = "1.0.4"
+	DefaultGatewayURL       = "https://i.weread.qq.com/api/agent/gateway"
+	DefaultSyncInterval     = "6h"
+	DefaultSiteTitle        = "纸间笔记"
+	DefaultTheme            = "walnut"
+	DefaultColorScheme      = "dark"
+	DefaultHighlightDisplay = "card"
 )
+
+var allowedHighlightDisplays = map[string]struct{}{
+	"card":     {},
+	"poster":   {},
+	"reader":   {},
+	"polaroid": {},
+	"share":    {},
+}
 
 var allowedThemes = map[string]struct{}{
 	"walnut":      {},
@@ -46,6 +55,14 @@ func NormalizeColorScheme(s string) string {
 		return s
 	}
 	return DefaultColorScheme
+}
+
+func NormalizeHighlightDisplay(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if _, ok := allowedHighlightDisplays[s]; ok {
+		return s
+	}
+	return DefaultHighlightDisplay
 }
 
 type Runtime struct {
@@ -130,6 +147,9 @@ func LoadRuntime(st *store.Store, encKey []byte, env config.Config) (Runtime, er
 	if row.ColorScheme == "" {
 		_ = st.SetSetting("color_scheme", DefaultColorScheme)
 	}
+	if row.HighlightDisplay == "" {
+		_ = st.SetSetting("highlight_display", DefaultHighlightDisplay)
+	}
 
 	return rt, nil
 }
@@ -142,7 +162,7 @@ func persistAPIKey(st *store.Store, encKey []byte, plain string) error {
 	return st.SetSetting("api_key", cipher)
 }
 
-func Save(st *store.Store, encKey []byte, skill, gateway, interval, title, theme, scheme, newAPIKey string, keepKey bool, currentKey string) (Runtime, error) {
+func Save(st *store.Store, encKey []byte, skill, gateway, interval, title, theme, scheme, highlightDisplay, newAPIKey string, keepKey bool, currentKey string) (Runtime, error) {
 	skill = strings.TrimSpace(skill)
 	gateway = strings.TrimSpace(gateway)
 	interval = strings.TrimSpace(interval)
@@ -160,6 +180,7 @@ func Save(st *store.Store, encKey []byte, skill, gateway, interval, title, theme
 	}
 	theme = NormalizeTheme(theme)
 	scheme = NormalizeColorScheme(scheme)
+	highlightDisplay = NormalizeHighlightDisplay(highlightDisplay)
 	if err := ValidateGateway(gateway); err != nil {
 		return Runtime{}, err
 	}
@@ -192,6 +213,9 @@ func Save(st *store.Store, encKey []byte, skill, gateway, interval, title, theme
 		return Runtime{}, err
 	}
 	if err := st.SetSetting("color_scheme", scheme); err != nil {
+		return Runtime{}, err
+	}
+	if err := st.SetSetting("highlight_display", highlightDisplay); err != nil {
 		return Runtime{}, err
 	}
 

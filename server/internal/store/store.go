@@ -724,13 +724,14 @@ ON CONFLICT(k) DO UPDATE SET v=excluded.v`, key, value)
 }
 
 type AppSettings struct {
-	APIKeyCipher string
-	SkillVersion string
-	GatewayURL   string
-	SyncInterval string
-	SiteTitle    string
-	Theme        string
-	ColorScheme  string
+	APIKeyCipher     string
+	SkillVersion     string
+	GatewayURL       string
+	SyncInterval     string
+	SiteTitle        string
+	Theme            string
+	ColorScheme      string
+	HighlightDisplay string
 }
 
 func (s *Store) LoadAppSettings() (AppSettings, error) {
@@ -760,6 +761,8 @@ func (s *Store) LoadAppSettings() (AppSettings, error) {
 			out.Theme = v
 		case "color_scheme":
 			out.ColorScheme = v
+		case "highlight_display":
+			out.HighlightDisplay = v
 		}
 	}
 	return out, rows.Err()

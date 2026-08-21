@@ -182,4 +182,5 @@ export type AppSettings = {
   siteTitle: string
   theme: string
   colorScheme: string
+  highlightDisplay: string
 }

@@ -24,7 +24,8 @@
 
 - 服务端按本地日期缓存当日 5 条划线（进程内存）；当日首次 GET 自动抽取，之后返回同一批。
 - 「换一批」走 POST 覆盖当日缓存。进程重启后会重新抽。
-- 前端按屏宽从这 5 条里展示 3 / 4 / 5 张藏书票（原文、书名、作者、划线日期）。
+- 前端按屏宽从这 5 条里展示 3 / 4 / 5 条（原文、书名、作者、划线日期）。
+- 列表与点开展示形态一致，可在设置里配置（`highlightDisplay`）：藏书票 / 海报 / 阅读 / 拍立得 / 分享图，默认藏书票。首页网格按形态分开：藏书票散落、海报展览墙、阅读单栏、拍立得相纸桌、分享图方格。
 - 前端路由：`/`。
 
 ### 阅读统计
@@ -41,7 +42,7 @@
 
 ### 设置
 
-- 站点名、Gateway、`skill_version`、提醒阈值（原同步间隔）、API Key 写入 `app_settings`。
+- 站点名、主题、明暗、摘抄展示（`highlightDisplay`，首页列表与点开一致）、Gateway、`skill_version`、提醒阈值（原同步间隔）、API Key 写入 `app_settings`。
 - API Key 用 AES-256-GCM 加密；主密钥来自 `SETTINGS_ENCRYPT_KEY` 或数据库同目录的 `settings.key`。
 - GET 只返回脱敏 `apiKeyMasked`（如 `wrk-****afaf`）；PUT 时 `apiKey` 留空不修改。
 - 保存后对当前进程立即生效，无需重启。无 Key 时服务仍可启动，同步会失败直到填入。
@@ -100,6 +101,7 @@ web (Vite :5173)  --/api-->  server (Gin :8080 + SQLite)  --Bearer wrk-*-->  i.w
 - `server/internal/appcfg`：库内设置加载/保存
 - `server/internal/secret`：API Key 加解密与脱敏
 - `web/src/views`：`HomeView.vue`、`NotesList.vue`、`NoteDetail.vue`、`StatsView.vue`、`ReportView.vue`、`ShelfView.vue`、`SettingsView.vue`
+- `web/src/highlights`：首页摘抄列表与灯箱的共用展示形态
 - `web/src/api.ts`：前端请求封装
 
 ## 本地运行
