@@ -2,6 +2,7 @@
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { RandomHighlight } from '../types'
 import HighlightFigure from './HighlightFigure.vue'
+import { downloadHighlightCard, highlightExportFilename } from './exportCard'
 import type { HighlightDisplay } from './types'
 
 const props = defineProps<{
@@ -17,8 +18,11 @@ const emit = defineEmits<{
 }>()
 
 const stageEl = ref<HTMLElement | null>(null)
+const frameEl = ref<HTMLElement | null>(null)
 const closeBtn = ref<HTMLButtonElement | null>(null)
 const motionLock = ref(false)
+const exporting = ref(false)
+const exportHint = ref('')
 const slideName = ref('slip-slide-next')
 const allowSlide = ref(false)
 let swipeX = 0
@@ -107,8 +111,24 @@ async function requestClose() {
   emit('closed')
 }
 
+async function shareCard() {
+  if (exporting.value || motionLock.value) return
+  const root = frameEl.value
+  if (!root) return
+  exporting.value = true
+  exportHint.value = ''
+  try {
+    await downloadHighlightCard(root, highlightExportFilename(props.item.title))
+  } catch (err) {
+    console.warn(err)
+    exportHint.value = '导出失败，封面跨域时图中可能缺封面，请稍后重试'
+  } finally {
+    exporting.value = false
+  }
+}
+
 function go(delta: number) {
-  if (props.total < 2 || motionLock.value) return
+  if (props.total < 2 || motionLock.value || exporting.value) return
   slideName.value = delta > 0 ? 'slip-slide-next' : 'slip-slide-prev'
   emit('go', delta)
 }
@@ -167,11 +187,24 @@ watch(
 <template>
   <div class="slip-lightbox" :data-display="display" role="dialog" aria-modal="true" aria-labelledby="slip-focus-title">
     <button class="slip-lightbox-scrim" type="button" aria-label="关闭摘抄" @click="requestClose" />
-    <button ref="closeBtn" class="slip-lightbox-close" type="button" aria-label="关闭" @click="requestClose">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" />
-      </svg>
-    </button>
+    <div class="slip-lightbox-tools">
+      <button
+        class="slip-lightbox-share"
+        type="button"
+        :aria-label="exporting ? '正在导出卡片' : '下载当前卡片图片'"
+        :disabled="exporting"
+        @click="shareCard"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 4v10M8 8l4-4 4 4M6 14v4.5A1.5 1.5 0 0 0 7.5 20h9a1.5 1.5 0 0 0 1.5-1.5V14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+      <button ref="closeBtn" class="slip-lightbox-close" type="button" aria-label="关闭" @click="requestClose">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" />
+        </svg>
+      </button>
+    </div>
     <button class="slip-lightbox-nav prev" type="button" aria-label="上一张" :disabled="total < 2" @click="go(-1)">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
@@ -191,12 +224,12 @@ watch(
       @pointerup="onPointerUp"
       @pointercancel="onPointerUp"
     >
-          <Transition :name="allowSlide ? slideName : undefined">
-        <div :key="display + '-' + item.bookmarkId" class="hl-focus-frame">
+      <Transition :name="allowSlide ? slideName : undefined">
+        <div :key="display + '-' + item.bookmarkId" ref="frameEl" class="hl-focus-frame">
           <HighlightFigure :item="item" :display="display" variant="focus" title-id="slip-focus-title" />
         </div>
       </Transition>
     </div>
-    <p class="slip-lightbox-hint">左右滑动或用方向键切换 · Esc 关闭</p>
+    <p class="slip-lightbox-hint">{{ exportHint || '左右滑动或用方向键切换 · Esc 关闭' }}</p>
   </div>
 </template>

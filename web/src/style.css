@@ -1634,10 +1634,19 @@ body.slip-lightbox-lock {
   }
 }
 
-.slip-lightbox-close,
-.slip-lightbox-nav {
+.slip-lightbox-tools {
   position: absolute;
   z-index: 3;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  gap: 8px;
+}
+
+.slip-lightbox-close,
+.slip-lightbox-share,
+.slip-lightbox-nav {
+  padding: 0;
   width: 44px;
   height: 44px;
   display: grid;
@@ -1650,6 +1659,7 @@ body.slip-lightbox-lock {
 }
 
 .slip-lightbox-close:hover,
+.slip-lightbox-share:hover:not(:disabled),
 .slip-lightbox-nav:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-accent-2) 18%, transparent);
   border-color: var(--gold);
@@ -1662,14 +1672,20 @@ body.slip-lightbox-lock {
 }
 
 .slip-lightbox-close svg,
+.slip-lightbox-share svg,
 .slip-lightbox-nav svg {
   width: 20px;
   height: 20px;
 }
 
-.slip-lightbox-close {
-  top: 18px;
-  right: 18px;
+.slip-lightbox-share:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
+.slip-lightbox-nav {
+  position: absolute;
+  z-index: 3;
 }
 
 .slip-lightbox-nav.prev {
@@ -1712,18 +1728,13 @@ body.slip-lightbox-lock {
   font-size: 20px;
 }
 
-.slip-focus-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.slip-notes-link {
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  color: var(--cinnabar);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+.slip-focus.is-exporting .slip-quote,
+.hl-poster.is-exporting,
+.hl-reader.is-exporting,
+.hl-polaroid.is-exporting,
+.hl-share.is-exporting {
+  max-height: none;
+  overflow: visible;
 }
 
 .slip-title-link {
@@ -1738,10 +1749,6 @@ body.slip-lightbox-lock {
 .slip-title-link:hover cite {
   border-bottom-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
   color: var(--cinnabar);
-}
-
-.slip-notes-link:hover {
-  color: var(--ink);
 }
 
 .slip-lightbox-hint {
@@ -1995,11 +2002,6 @@ body.slip-lightbox-lock {
   font-family: var(--font-ui);
   font-size: 12px;
   color: var(--color-text-muted);
-}
-
-.hl-share-notes {
-  margin-top: 12px;
-  align-self: flex-end;
 }
 
 .hl-poster--tile {

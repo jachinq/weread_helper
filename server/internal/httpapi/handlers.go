@@ -51,6 +51,7 @@ func (s *Server) Register(r *gin.Engine) {
 	api.POST("/sync", s.syncStart)
 	api.GET("/settings", s.settingsGet)
 	api.PUT("/settings", s.settingsPut)
+	api.GET("/covers", s.coverProxy)
 }
 
 func (s *Server) health(c *gin.Context) {
