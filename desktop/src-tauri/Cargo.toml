@@ -1,6 +1,6 @@
 [package]
 name = "weread-helper-desktop"
-version = "0.1.0"
+version = "1.0.4"
 description = "微信读书助手桌面壳"
 authors = ["jachin"]
 edition = "2021"

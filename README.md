@@ -45,14 +45,44 @@ pnpm run sidecar
 pnpm run dev
 ```
 
-打包 NSIS 安装器（默认每用户安装，目录可写；也可把构建产物整夹拷走当便携包）：
+一键发布（便携 zip + NSIS 安装包）：
 
 ```bash
 cd desktop
-pnpm run build
+pnpm install
+pnpm run release
 ```
 
-产物一般在 `desktop/src-tauri/target/release/bundle/nsis/`。便携使用时请保持 exe、sidecar（`weread-helper.exe`）与 `resources/web` 相对位置，数据在同目录 `data/`。
+产物在 `desktop/dist/`：
+
+- `weread-helper-<version>-windows-x64-portable.zip`：解压后运行「微信读书助手.exe」
+- `weread-helper-<version>-windows-x64-setup.exe`：每用户安装器
+
+仅打 Tauri 包、不整理 dist 时仍可用 `pnpm run build`。NSIS 原始文件也在 `desktop/src-tauri/target/release/bundle/nsis/`。
+
+### 升级应用版本
+
+版本号写在三处，需保持一致：`desktop/src-tauri/tauri.conf.json`、`desktop/src-tauri/Cargo.toml`、`desktop/package.json`。发布脚本按 `tauri.conf.json` 生成产物名。用 `desktop/scripts/bump-version.ps1` 一次改齐（SemVer `x.y.z`）。
+
+在 `desktop/` 下：
+
+```bash
+pnpm run bump:patch   # 小版本  0.1.0 -> 0.1.1
+pnpm run bump:minor   # 中版本  0.1.0 -> 0.2.0
+pnpm run bump:major   # 大版本  0.1.0 -> 1.0.0
+```
+
+或直接跑脚本：
+
+```powershell
+.\scripts\bump-version.ps1 -Part patch
+.\scripts\bump-version.ps1 -Part minor
+.\scripts\bump-version.ps1 -Part major
+.\scripts\bump-version.ps1 -Version 1.2.3          # 指定版本
+.\scripts\bump-version.ps1 -Part patch -DryRun     # 只预览，不写盘
+```
+
+`-Part` 也可用 `xiao` / `zhong` / `da`。三处不一致时会警告，仍以 `tauri.conf.json` 为基准计算下一号并写齐。
 
 托盘菜单：显示主窗口、开机自启、退出。关闭窗口会隐藏到托盘。开机自启写入当前用户 Run 项（指向当时的 exe 绝对路径，移动文件夹后需重新勾选）。
 

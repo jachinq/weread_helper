@@ -1,13 +1,18 @@
 {
   "name": "weread-helper-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.4",
   "type": "module",
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "sidecar": "powershell -ExecutionPolicy Bypass -File ./scripts/build-sidecar.ps1",
     "dev": "tauri dev",
     "build": "tauri build",
+    "release": "powershell -ExecutionPolicy Bypass -File ./scripts/build-release.ps1",
+    "bump": "powershell -ExecutionPolicy Bypass -File ./scripts/bump-version.ps1",
+    "bump:patch": "powershell -ExecutionPolicy Bypass -File ./scripts/bump-version.ps1 -Part patch",
+    "bump:minor": "powershell -ExecutionPolicy Bypass -File ./scripts/bump-version.ps1 -Part minor",
+    "bump:major": "powershell -ExecutionPolicy Bypass -File ./scripts/bump-version.ps1 -Part major",
     "tauri": "tauri"
   },
   "devDependencies": {
