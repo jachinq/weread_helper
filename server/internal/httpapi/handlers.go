@@ -27,6 +27,8 @@ type Server struct {
 	pickMu    sync.Mutex
 	pickDate  string
 	pickItems []store.RandomHighlight
+	otdDate   string
+	otdItems  []store.RandomHighlight
 }
 
 func New(st *store.Store, job *syncjob.Job, client *weread.Client, encKey []byte) *Server {
@@ -39,6 +41,7 @@ func (s *Server) Register(r *gin.Engine) {
 	api.GET("/notebooks", s.notebooks)
 	api.GET("/highlights/random", s.randomHighlights)
 	api.POST("/highlights/random", s.refreshHighlights)
+	api.GET("/highlights/on-this-day", s.onThisDayHighlights)
 	api.GET("/books/:bookId", s.book)
 	api.GET("/books/:bookId/notes", s.notes)
 	api.GET("/stats", s.stats)
@@ -66,12 +69,7 @@ func (s *Server) refreshHighlights(c *gin.Context) {
 	s.writePicks(c, true)
 }
 
-func (s *Server) writePicks(c *gin.Context, refresh bool) {
-	items, date, err := s.todayPicks(refresh)
-	if err != nil {
-		writeErr(c, err)
-		return
-	}
+func highlightItemsJSON(items []store.RandomHighlight) []gin.H {
 	out := make([]gin.H, 0, len(items))
 	for _, h := range items {
 		out = append(out, gin.H{
@@ -84,7 +82,41 @@ func (s *Server) writePicks(c *gin.Context, refresh bool) {
 			"cover":      h.Cover,
 		})
 	}
-	c.JSON(http.StatusOK, gin.H{"date": date, "items": out})
+	return out
+}
+
+func (s *Server) writePicks(c *gin.Context, refresh bool) {
+	items, date, err := s.todayPicks(refresh)
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"date": date, "items": highlightItemsJSON(items)})
+}
+
+func (s *Server) onThisDayHighlights(c *gin.Context) {
+	items, date, err := s.onThisDayPicks()
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"date": date, "items": highlightItemsJSON(items)})
+}
+
+func (s *Server) onThisDayPicks() ([]store.RandomHighlight, string, error) {
+	today := time.Now().In(store.Shanghai()).Format("2006-01-02")
+	s.pickMu.Lock()
+	defer s.pickMu.Unlock()
+	if s.otdDate == today && s.otdItems != nil {
+		return s.otdItems, today, nil
+	}
+	items, err := s.store.HighlightsOnThisDay(time.Now(), 5)
+	if err != nil {
+		return nil, today, err
+	}
+	s.otdDate = today
+	s.otdItems = items
+	return items, today, nil
 }
 
 func (s *Server) todayPicks(refresh bool) ([]store.RandomHighlight, string, error) {

@@ -1,29 +1,44 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { fetchRandomHighlights, fetchSettings, refreshRandomHighlights } from '../api'
+import { fetchOnThisDayHighlights, fetchRandomHighlights, fetchSettings, refreshRandomHighlights } from '../api'
 import HighlightFigure from '../highlights/HighlightFigure.vue'
 import HighlightLightbox from '../highlights/HighlightLightbox.vue'
 import { HIGHLIGHT_DISPLAYS, normalizeHighlightDisplay, type HighlightDisplay } from '../highlights/types'
 import type { RandomHighlight } from '../types'
 
+type LightboxKind = 'today' | 'otd'
+
 const pool = ref<RandomHighlight[]>([])
+const otdPool = ref<RandomHighlight[]>([])
 const loading = ref(false)
 const error = ref('')
 const count = ref(5)
 const drawKey = ref(0)
+const otdDrawKey = ref(0)
 const display = ref<HighlightDisplay>('card')
 let media640: MediaQueryList | undefined
 let media960: MediaQueryList | undefined
 
 const items = computed(() => pool.value.slice(0, count.value))
+const otdItems = computed(() => otdPool.value.slice(0, count.value))
 
 const focused = ref<number | null>(null)
-const lightboxOpen = ref(false)
-const slipEls = new Map<number, HTMLElement>()
+const lightboxKind = ref<LightboxKind | null>(null)
+const lightboxOpen = computed(() => lightboxKind.value != null && focused.value != null)
+const todaySlipEls = new Map<number, HTMLElement>()
+const otdSlipEls = new Map<number, HTMLElement>()
 let lastFocus: HTMLElement | null = null
 
-const focusedItem = computed(() => (focused.value == null ? null : items.value[focused.value] ?? null))
-const sourceEl = computed(() => (focused.value == null ? null : slipEls.get(focused.value) ?? null))
+const activeItems = computed(() => (lightboxKind.value === 'otd' ? otdItems.value : items.value))
+const focusedItem = computed(() => {
+  if (focused.value == null) return null
+  return activeItems.value[focused.value] ?? null
+})
+const sourceEl = computed(() => {
+  if (focused.value == null || lightboxKind.value == null) return null
+  const map = lightboxKind.value === 'otd' ? otdSlipEls : todaySlipEls
+  return map.get(focused.value) ?? null
+})
 
 function pickCount() {
   if (window.matchMedia('(max-width: 639px)').matches) return 3
@@ -32,7 +47,7 @@ function pickCount() {
 }
 
 async function load(refresh = false) {
-  if (lightboxOpen.value) onClosed()
+  if (lightboxKind.value === 'today') onClosed()
   loading.value = true
   error.value = ''
   try {
@@ -46,15 +61,25 @@ async function load(refresh = false) {
   }
 }
 
-function onBreakpoint() {
-  count.value = pickCount()
-  if (focused.value != null && focused.value >= count.value) {
-    focused.value = Math.max(0, count.value - 1)
+async function loadOnThisDay() {
+  try {
+    const data = await fetchOnThisDayHighlights()
+    otdPool.value = data.items || []
+    otdDrawKey.value += 1
+  } catch {
+    otdPool.value = []
   }
 }
 
-function scatter(i: number, rotSpan: number, xSpan: number, ySpan: number) {
-  const seed = drawKey.value * 19 + i * 47 + count.value * 3
+function onBreakpoint() {
+  count.value = pickCount()
+  if (focused.value != null && focused.value >= activeItems.value.length) {
+    focused.value = Math.max(0, activeItems.value.length - 1)
+  }
+}
+
+function scatter(i: number, rotSpan: number, xSpan: number, ySpan: number, seedBase: number) {
+  const seed = seedBase * 19 + i * 47 + count.value * 3
   const rot = ((seed % (rotSpan * 20 + 1)) / 10) - rotSpan
   const x = ((seed * 5) % (xSpan * 2 + 1)) - xSpan
   const y = ((seed * 11) % (ySpan * 2 + 1)) - ySpan
@@ -66,9 +91,9 @@ function scatter(i: number, rotSpan: number, xSpan: number, ySpan: number) {
   }
 }
 
-function tileStyle(i: number) {
-  if (display.value === 'card') return scatter(i, 4, 28, 18)
-  if (display.value === 'polaroid') return scatter(i, 2, 10, 8)
+function tileStyle(i: number, seedBase: number) {
+  if (display.value === 'card') return scatter(i, 4, 28, 18, seedBase)
+  if (display.value === 'polaroid') return scatter(i, 2, 10, 8, seedBase)
   return { '--delay': `${i * 90}ms`, '--slip-rot': '0deg', '--slip-x': '0px', '--slip-y': '0px' }
 }
 
@@ -76,29 +101,30 @@ const displayLabel = computed(
   () => HIGHLIGHT_DISPLAYS.find((x) => x.id === display.value)?.label ?? '藏书票',
 )
 
-function setSlipEl(i: number, el: Element | null) {
-  if (el instanceof HTMLElement) slipEls.set(i, el)
-  else slipEls.delete(i)
+function setSlipEl(map: Map<number, HTMLElement>, i: number, el: Element | null) {
+  if (el instanceof HTMLElement) map.set(i, el)
+  else map.delete(i)
 }
 
-function openAt(i: number) {
-  if (lightboxOpen.value) return
-  const source = slipEls.get(i)
+function openAt(kind: LightboxKind, i: number) {
+  if (lightboxKind.value != null) return
+  const map = kind === 'otd' ? otdSlipEls : todaySlipEls
+  const source = map.get(i)
   if (!source) return
   lastFocus = document.activeElement instanceof HTMLElement ? document.activeElement : source
   focused.value = i
-  lightboxOpen.value = true
+  lightboxKind.value = kind
 }
 
 function onClosed() {
-  lightboxOpen.value = false
+  lightboxKind.value = null
   focused.value = null
   lastFocus?.focus()
 }
 
 function go(delta: number) {
-  if (focused.value == null || !items.value.length) return
-  focused.value = (focused.value + delta + items.value.length) % items.value.length
+  if (focused.value == null || !activeItems.value.length) return
+  focused.value = (focused.value + delta + activeItems.value.length) % activeItems.value.length
 }
 
 onMounted(() => {
@@ -114,7 +140,8 @@ onMounted(() => {
     .catch(() => {
       display.value = 'card'
     })
-  load(false)
+  void load(false)
+  void loadOnThisDay()
 })
 
 onUnmounted(() => {
@@ -126,6 +153,31 @@ onUnmounted(() => {
 
 <template>
   <section class="home" :aria-busy="loading">
+    <div v-if="otdItems.length" class="home-otd">
+      <header class="home-head">
+        <div>
+          <p class="home-kicker">On this day · 那年今日</p>
+          <h2 class="page-title">那年今日</h2>
+          <p class="muted">往年同一天写下的划线，样式与点开交互同「{{ displayLabel }}」</p>
+        </div>
+      </header>
+      <div class="home-spread" :key="otdDrawKey" :data-count="otdItems.length" :data-display="display">
+        <button
+          v-for="(h, i) in otdItems"
+          :key="h.bookmarkId"
+          :ref="(el) => setSlipEl(otdSlipEls, i, el as Element | null)"
+          class="hl-tile"
+          :class="['slip-' + ((i % 5) + 1), { 'is-origin': lightboxKind === 'otd' && focused === i }]"
+          :style="tileStyle(i, otdDrawKey)"
+          type="button"
+          :aria-label="`展开那年今日《${h.title || '未命名'}》的划线`"
+          @click="openAt('otd', i)"
+        >
+          <HighlightFigure :item="h" :display="display" variant="tile" />
+        </button>
+      </div>
+    </div>
+
     <header class="home-head">
       <div>
         <p class="home-kicker">Commonplace · 灯下抽签</p>
@@ -161,13 +213,13 @@ onUnmounted(() => {
       <button
         v-for="(h, i) in items"
         :key="h.bookmarkId"
-        :ref="(el) => setSlipEl(i, el as Element | null)"
+        :ref="(el) => setSlipEl(todaySlipEls, i, el as Element | null)"
         class="hl-tile"
-        :class="['slip-' + ((i % 5) + 1), { 'is-origin': lightboxOpen && focused === i }]"
-        :style="tileStyle(i)"
+        :class="['slip-' + ((i % 5) + 1), { 'is-origin': lightboxKind === 'today' && focused === i }]"
+        :style="tileStyle(i, drawKey)"
         type="button"
         :aria-label="`展开《${h.title || '未命名'}》的划线`"
-        @click="openAt(i)"
+        @click="openAt('today', i)"
       >
         <HighlightFigure :item="h" :display="display" variant="tile" />
       </button>
@@ -178,7 +230,7 @@ onUnmounted(() => {
         v-if="lightboxOpen && focusedItem"
         :display="display"
         :item="focusedItem"
-        :total="items.length"
+        :total="activeItems.length"
         :source-el="sourceEl"
         @closed="onClosed"
         @go="go"

@@ -24,6 +24,10 @@ export function fetchRandomHighlights() {
   return getJson<RandomHighlightsResponse>('/api/highlights/random')
 }
 
+export function fetchOnThisDayHighlights() {
+  return getJson<RandomHighlightsResponse>('/api/highlights/on-this-day')
+}
+
 export function refreshRandomHighlights() {
   return fetch('/api/highlights/random', { method: 'POST' }).then(async (res) => {
     const data = await res.json().catch(() => ({}))

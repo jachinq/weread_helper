@@ -1165,6 +1165,10 @@ a {
   text-align: center;
 }
 
+.home-otd {
+  margin-bottom: 40px;
+}
+
 .home-head {
   display: flex;
   justify-content: space-between;

@@ -406,25 +406,17 @@ func (s *Store) ListChapters(bookID string) ([]Chapter, error) {
 	return out, rows.Err()
 }
 
-func (s *Store) RandomHighlights(limit int) ([]RandomHighlight, error) {
+func clampHighlightLimit(limit int) int {
 	if limit <= 0 {
-		limit = 5
+		return 5
 	}
 	if limit > 5 {
-		limit = 5
+		return 5
 	}
-	rows, err := s.DB.Query(`
-SELECT h.bookmark_id, h.book_id, h.chapter_uid, h.mark_text, h.create_time, h.range, h.color_style,
-       b.title, b.author, b.cover
-FROM highlights h
-JOIN books b ON b.book_id = h.book_id
-WHERE TRIM(h.mark_text) != ''
-ORDER BY RANDOM()
-LIMIT ?`, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	return limit
+}
+
+func scanRandomHighlights(rows *sql.Rows) ([]RandomHighlight, error) {
 	var out []RandomHighlight
 	for rows.Next() {
 		var h RandomHighlight
@@ -440,6 +432,46 @@ LIMIT ?`, limit)
 		out = []RandomHighlight{}
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) RandomHighlights(limit int) ([]RandomHighlight, error) {
+	limit = clampHighlightLimit(limit)
+	rows, err := s.DB.Query(`
+SELECT h.bookmark_id, h.book_id, h.chapter_uid, h.mark_text, h.create_time, h.range, h.color_style,
+       b.title, b.author, b.cover
+FROM highlights h
+JOIN books b ON b.book_id = h.book_id
+WHERE TRIM(h.mark_text) != ''
+ORDER BY RANDOM()
+LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanRandomHighlights(rows)
+}
+
+func (s *Store) HighlightsOnThisDay(now time.Time, limit int) ([]RandomHighlight, error) {
+	limit = clampHighlightLimit(limit)
+	loc := Shanghai()
+	today := now.In(loc)
+	monthDay := today.Format("01-02")
+	year := today.Year()
+	rows, err := s.DB.Query(`
+SELECT h.bookmark_id, h.book_id, h.chapter_uid, h.mark_text, h.create_time, h.range, h.color_style,
+       b.title, b.author, b.cover
+FROM highlights h
+JOIN books b ON b.book_id = h.book_id
+WHERE TRIM(h.mark_text) != ''
+  AND strftime('%m-%d', h.create_time, 'unixepoch', '+8 hours') = ?
+  AND CAST(strftime('%Y', h.create_time, 'unixepoch', '+8 hours') AS INTEGER) < ?
+ORDER BY h.create_time DESC
+LIMIT ?`, monthDay, year, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanRandomHighlights(rows)
 }
 
 func (s *Store) ListHighlights(bookID string) ([]Highlight, error) {
