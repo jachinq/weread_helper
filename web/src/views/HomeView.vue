@@ -12,15 +12,13 @@ const pool = ref<RandomHighlight[]>([])
 const otdPool = ref<RandomHighlight[]>([])
 const loading = ref(false)
 const error = ref('')
-const count = ref(5)
+const displayCount = 5
 const drawKey = ref(0)
 const otdDrawKey = ref(0)
 const display = ref<HighlightDisplay>('card')
-let media640: MediaQueryList | undefined
-let media960: MediaQueryList | undefined
 
-const items = computed(() => pool.value.slice(0, count.value))
-const otdItems = computed(() => otdPool.value.slice(0, count.value))
+const items = computed(() => pool.value.slice(0, displayCount))
+const otdItems = computed(() => otdPool.value.slice(0, displayCount))
 
 const focused = ref<number | null>(null)
 const lightboxKind = ref<LightboxKind | null>(null)
@@ -39,12 +37,6 @@ const sourceEl = computed(() => {
   const map = lightboxKind.value === 'otd' ? otdSlipEls : todaySlipEls
   return map.get(focused.value) ?? null
 })
-
-function pickCount() {
-  if (window.matchMedia('(max-width: 639px)').matches) return 3
-  if (window.matchMedia('(max-width: 959px)').matches) return 4
-  return 5
-}
 
 async function load(refresh = false) {
   if (lightboxKind.value === 'today') onClosed()
@@ -71,15 +63,8 @@ async function loadOnThisDay() {
   }
 }
 
-function onBreakpoint() {
-  count.value = pickCount()
-  if (focused.value != null && focused.value >= activeItems.value.length) {
-    focused.value = Math.max(0, activeItems.value.length - 1)
-  }
-}
-
 function scatter(i: number, rotSpan: number, xSpan: number, ySpan: number, seedBase: number) {
-  const seed = seedBase * 19 + i * 47 + count.value * 3
+  const seed = seedBase * 19 + i * 47 + displayCount * 3
   const rot = ((seed % (rotSpan * 20 + 1)) / 10) - rotSpan
   const x = ((seed * 5) % (xSpan * 2 + 1)) - xSpan
   const y = ((seed * 11) % (ySpan * 2 + 1)) - ySpan
@@ -128,11 +113,6 @@ function go(delta: number) {
 }
 
 onMounted(() => {
-  count.value = pickCount()
-  media640 = window.matchMedia('(max-width: 639px)')
-  media960 = window.matchMedia('(max-width: 959px)')
-  media640.addEventListener('change', onBreakpoint)
-  media960.addEventListener('change', onBreakpoint)
   void fetchSettings()
     .then((s) => {
       display.value = normalizeHighlightDisplay(s.highlightDisplay)
@@ -145,8 +125,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  media640?.removeEventListener('change', onBreakpoint)
-  media960?.removeEventListener('change', onBreakpoint)
   document.body.classList.remove('slip-lightbox-lock')
 })
 </script>
@@ -194,11 +172,11 @@ onUnmounted(() => {
     <div
       v-else-if="loading && !items.length"
       class="home-spread"
-      data-count="3"
+      :data-count="displayCount"
       :data-display="display"
       aria-hidden="true"
     >
-      <div v-for="n in 3" :key="n" class="hl-tile skeleton" :class="'slip-' + n">
+      <div v-for="n in displayCount" :key="n" class="hl-tile skeleton" :class="'slip-' + n">
         <div class="line" />
         <div class="line" />
         <div class="line short" />
