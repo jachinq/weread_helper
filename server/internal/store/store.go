@@ -34,18 +34,14 @@ func Open(path string) (*Store, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	if _, err := db.Exec(string(schema)); err != nil {
+	if err := execScript(db, string(schema)); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("migrate: %w", err)
+		return nil, fmt.Errorf("schema: %w", err)
 	}
 	st := &Store{DB: db}
-	if err := st.migrateReadStatsYear(); err != nil {
+	if err := st.migrate(); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("migrate read_stats: %w", err)
-	}
-	if err := st.migrateReadStatsPeriod(); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("migrate read_stats period: %w", err)
+		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	return st, nil
 }
@@ -513,109 +509,6 @@ func (s *Store) ListReviews(bookID string) ([]Review, error) {
 		out = append(out, r)
 	}
 	return out, rows.Err()
-}
-
-func (s *Store) migrateReadStatsYear() error {
-	var n int
-	err := s.DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('read_stats') WHERE name='year'`).Scan(&n)
-	if err != nil {
-		return err
-	}
-	if n > 0 {
-		return nil
-	}
-	tx, err := s.DB.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(`CREATE TABLE read_stats_v2 (
-  mode TEXT NOT NULL,
-  year INTEGER NOT NULL DEFAULT 0,
-  payload TEXT NOT NULL,
-  fetched_at INTEGER NOT NULL,
-  PRIMARY KEY (mode, year)
-)`); err != nil {
-		return err
-	}
-	rows, err := tx.Query(`SELECT mode, payload, fetched_at FROM read_stats`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	now := time.Now()
-	for rows.Next() {
-		var mode, payload string
-		var fetchedAt int64
-		if err := rows.Scan(&mode, &payload, &fetchedAt); err != nil {
-			return err
-		}
-		year := int64(0)
-		if mode == "annually" {
-			year = int64(YearFromPayload(payload, time.Unix(fetchedAt, 0)))
-			if year <= 0 {
-				year = int64(CalendarYear(now))
-			}
-		}
-		if _, err := tx.Exec(`INSERT INTO read_stats_v2(mode, year, payload, fetched_at) VALUES (?,?,?,?)
-ON CONFLICT(mode, year) DO UPDATE SET payload=excluded.payload, fetched_at=excluded.fetched_at`,
-			mode, year, payload, fetchedAt); err != nil {
-			return err
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`DROP TABLE read_stats`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`ALTER TABLE read_stats_v2 RENAME TO read_stats`); err != nil {
-		return err
-	}
-	return tx.Commit()
-}
-
-func (s *Store) migrateReadStatsPeriod() error {
-	rows, err := s.DB.Query(`SELECT mode, year, payload, fetched_at FROM read_stats WHERE mode IN ('weekly','monthly') AND year=0`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	type row struct {
-		mode      string
-		payload   string
-		fetchedAt int64
-	}
-	var pending []row
-	for rows.Next() {
-		var r row
-		var year int64
-		if err := rows.Scan(&r.mode, &year, &r.payload, &r.fetchedAt); err != nil {
-			return err
-		}
-		pending = append(pending, r)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	now := time.Now()
-	for _, r := range pending {
-		key := PeriodKeyFromPayload(r.mode, r.payload, time.Unix(r.fetchedAt, 0))
-		if key <= 0 {
-			key = PeriodKeyFromPayload(r.mode, r.payload, now)
-		}
-		if _, err := s.DB.Exec(`INSERT INTO read_stats(mode, year, payload, fetched_at) VALUES (?,?,?,?)
-ON CONFLICT(mode, year) DO UPDATE SET
-  payload=CASE WHEN excluded.fetched_at>=read_stats.fetched_at THEN excluded.payload ELSE read_stats.payload END,
-  fetched_at=CASE WHEN excluded.fetched_at>=read_stats.fetched_at THEN excluded.fetched_at ELSE read_stats.fetched_at END`,
-			r.mode, key, r.payload, r.fetchedAt); err != nil {
-			return err
-		}
-		if _, err := s.DB.Exec(`DELETE FROM read_stats WHERE mode=? AND year=0`, r.mode); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (s *Store) PutStats(mode, payload string) error {

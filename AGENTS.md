@@ -97,12 +97,13 @@ web (Vite :5173)  --/api-->  server (Gin :8080 + SQLite)  --Bearer wrk-*-->  i.w
 - 划线接口名是 `/book/bookmarklist`，返回的是划线不是书签。
 - `reviewCount` = 想法，`noteCount` = 划线，`bookmarkCount` = 书签数量。
 - 读接口走本地库；写官方只发生在同步任务，以及统计页按需拉取历史年/月/周快照。
+- **SQLite 结构变更必须兼容旧库，禁止靠删库重同步。** `schema.sql` 只有 `CREATE TABLE/INDEX IF NOT EXISTS`：已存在的表是空操作，不会补列、不会改主键。新表/新索引可以只改 `schema.sql`；给已有表加列、改主键、重建表必须写在 `store/migrate.go`，由 `Open()` 启动时对旧库执行。迁移要幂等（可重复跑），查询游标必须先关掉再 `DROP`/`ALTER` 同一张表。改结构后用旧 schema 打开已有库做测试（见 `migrate_test.go`），不要假设用户会清掉 `weread.db`。
 
 ## 目录
 
 - `server/cmd/api`：入口
 - `server/internal/weread`：Gateway 客户端
-- `server/internal/store`：SQLite
+- `server/internal/store`：SQLite（`schema.sql` 建新表；`migrate.go` 升级旧库）
 - `server/internal/syncjob`：增量同步
 - `server/internal/httpapi`：BFF 路由与笔记聚合
 - `server/internal/config`：环境变量

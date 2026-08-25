@@ -1,3 +1,6 @@
+-- 仅用于新建缺失的表/索引。已存在的表不会改结构（SQLite 的 IF NOT EXISTS 是空操作）。
+-- 列、主键等变更必须写在 migrate.go，启动时对旧库执行。
+
 CREATE TABLE IF NOT EXISTS books (
   book_id TEXT PRIMARY KEY,
   title TEXT NOT NULL DEFAULT '',
