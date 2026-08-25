@@ -114,3 +114,56 @@ func TestSearchChinesePhraseNotPartialRune(t *testing.T) {
 		t.Fatalf("want newer highlight first, got %s then %s", hits[0].BookmarkID, hits[1].BookmarkID)
 	}
 }
+
+func TestDailyPicksPersistAcrossOpen(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "picks.db")
+	st, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	book := &Book{BookID: "b1", Title: "书", Author: "作者", InNotebooks: true, Sort: 1}
+	if err := st.UpsertNotebook(book); err != nil {
+		t.Fatal(err)
+	}
+	err = st.ReplaceNotes("b1",
+		[]Chapter{{BookID: "b1", ChapterUID: 1, Title: "章", ChapterIdx: 1}},
+		[]Highlight{
+			{BookmarkID: "h1", BookID: "b1", ChapterUID: 1, MarkText: "一句", CreateTime: 1},
+			{BookmarkID: "h2", BookID: "b1", ChapterUID: 1, MarkText: "二句", CreateTime: 2},
+		},
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SaveDailyPicks("2026-08-25", []RandomHighlight{
+		{Highlight: Highlight{BookmarkID: "h2"}},
+		{Highlight: Highlight{BookmarkID: "h1"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	st, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	items, found, err := st.LoadDailyPicks("2026-08-25")
+	if err != nil || !found {
+		t.Fatalf("load after reopen: found=%v err=%v", found, err)
+	}
+	if len(items) != 2 || items[0].BookmarkID != "h2" || items[1].BookmarkID != "h1" {
+		t.Fatalf("order: %+v", items)
+	}
+	if items[0].Title != "书" || items[0].MarkText != "二句" {
+		t.Fatalf("joined fields: %+v", items[0])
+	}
+	_, found, err = st.LoadDailyPicks("2026-08-24")
+	if err != nil || found {
+		t.Fatalf("other day should miss, found=%v err=%v", found, err)
+	}
+}

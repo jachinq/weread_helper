@@ -81,6 +81,13 @@ CREATE TABLE IF NOT EXISTS starred_highlights (
   created_at INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS daily_highlight_picks (
+  pick_date TEXT NOT NULL,
+  pos INTEGER NOT NULL,
+  bookmark_id TEXT NOT NULL,
+  PRIMARY KEY (pick_date, pos)
+);
+
 CREATE INDEX IF NOT EXISTS idx_books_notebooks_sort ON books(in_notebooks, sort DESC);
 CREATE INDEX IF NOT EXISTS idx_books_shelf ON books(is_on_shelf, is_top DESC, read_update_time DESC);
 CREATE INDEX IF NOT EXISTS idx_highlights_book ON highlights(book_id);

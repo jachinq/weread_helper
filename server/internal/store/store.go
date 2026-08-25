@@ -426,12 +426,14 @@ func scanRandomHighlights(rows *sql.Rows) ([]RandomHighlight, error) {
 	return out, rows.Err()
 }
 
+const randomHighlightSelect = `h.bookmark_id, h.book_id, h.chapter_uid, h.mark_text, h.create_time, h.range, h.color_style,
+       b.title, b.author, b.cover,
+       CASE WHEN s.bookmark_id IS NULL THEN 0 ELSE 1 END`
+
 func (s *Store) RandomHighlights(limit int) ([]RandomHighlight, error) {
 	limit = clampHighlightLimit(limit)
 	rows, err := s.DB.Query(`
-SELECT h.bookmark_id, h.book_id, h.chapter_uid, h.mark_text, h.create_time, h.range, h.color_style,
-       b.title, b.author, b.cover,
-       CASE WHEN s.bookmark_id IS NULL THEN 0 ELSE 1 END
+SELECT `+randomHighlightSelect+`
 FROM highlights h
 JOIN books b ON b.book_id = h.book_id
 LEFT JOIN starred_highlights s ON s.bookmark_id = h.bookmark_id
@@ -443,6 +445,48 @@ LIMIT ?`, limit)
 	}
 	defer rows.Close()
 	return scanRandomHighlights(rows)
+}
+
+func (s *Store) LoadDailyPicks(date string) ([]RandomHighlight, bool, error) {
+	var n int
+	if err := s.DB.QueryRow(`SELECT COUNT(*) FROM daily_highlight_picks WHERE pick_date=?`, date).Scan(&n); err != nil {
+		return nil, false, err
+	}
+	if n == 0 {
+		return nil, false, nil
+	}
+	rows, err := s.DB.Query(`
+SELECT `+randomHighlightSelect+`
+FROM daily_highlight_picks p
+JOIN highlights h ON h.bookmark_id = p.bookmark_id
+JOIN books b ON b.book_id = h.book_id
+LEFT JOIN starred_highlights s ON s.bookmark_id = h.bookmark_id
+WHERE p.pick_date=?
+ORDER BY p.pos`, date)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	items, err := scanRandomHighlights(rows)
+	return items, true, err
+}
+
+func (s *Store) SaveDailyPicks(date string, items []RandomHighlight) error {
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(`DELETE FROM daily_highlight_picks WHERE pick_date=?`, date); err != nil {
+		return err
+	}
+	for i, h := range items {
+		if _, err := tx.Exec(`INSERT INTO daily_highlight_picks(pick_date, pos, bookmark_id) VALUES (?,?,?)`,
+			date, i, h.BookmarkID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *Store) HighlightsOnThisDay(now time.Time, limit int) ([]RandomHighlight, error) {

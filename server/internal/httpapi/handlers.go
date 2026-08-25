@@ -130,17 +130,31 @@ func (s *Server) onThisDayPicks() ([]store.RandomHighlight, string, error) {
 }
 
 func (s *Server) todayPicks(refresh bool) ([]store.RandomHighlight, string, error) {
-	today := time.Now().Format("2006-01-02")
+	today := time.Now().In(store.Shanghai()).Format("2006-01-02")
 	s.pickMu.Lock()
 	defer s.pickMu.Unlock()
 	if !refresh && s.pickDate == today && s.pickItems != nil {
 		return s.pickItems, today, nil
+	}
+	if !refresh {
+		stored, found, err := s.store.LoadDailyPicks(today)
+		if err != nil {
+			return nil, today, err
+		}
+		if found && len(stored) > 0 {
+			s.pickDate = today
+			s.pickItems = stored
+			return stored, today, nil
+		}
 	}
 	items, err := s.store.RandomHighlights(5)
 	if err != nil {
 		return nil, today, err
 	}
 	if refresh || len(items) > 0 {
+		if err := s.store.SaveDailyPicks(today, items); err != nil {
+			return nil, today, err
+		}
 		s.pickDate = today
 		s.pickItems = items
 	}
