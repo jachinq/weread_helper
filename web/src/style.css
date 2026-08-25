@@ -439,6 +439,7 @@ a {
   font-family: var(--font-ui);
   letter-spacing: 0.14em;
   border-radius: var(--radius);
+  text-decoration: none;
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 
@@ -729,6 +730,76 @@ a {
   letter-spacing: 0.04em;
 }
 
+.note-meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.star-mark {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.star-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+.star-mark:hover:not(:disabled),
+.star-mark.on,
+.slip-lightbox-share.on {
+  color: var(--gold);
+}
+
+.star-mark:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
+.search-hits {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hit-book {
+  display: inline-block;
+  margin-top: 12px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.hit-book:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.notes-subnav {
+  margin-bottom: 18px;
+}
+
+.kind-filter {
+  margin-bottom: 22px;
+}
+
+.note-export {
+  margin-top: 4px;
+}
+
+.note-card.is-flash {
+  animation: chapter-beacon 1.25s var(--ease);
+}
+
 .mark-text {
   margin: 0;
   padding: 0;
@@ -911,6 +982,9 @@ a {
   border: 0;
   border-right: 1px solid color-mix(in srgb, var(--color-accent-2) 22%, transparent);
   min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modes .btn:last-child {
@@ -918,7 +992,8 @@ a {
 }
 
 .modes button[aria-pressed="true"],
-.modes button.active {
+.modes button.active,
+.modes a.active {
   background: var(--lamp);
   color: var(--color-on-accent-2);
 }

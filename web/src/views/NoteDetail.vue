@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { fetchNotes } from '../api'
+import { fetchNotes, downloadNotesExport, setHighlightStarred } from '../api'
 import type { ChapterNotes, Highlight, NotesResponse, Review } from '../types'
+import StarMark from './StarMark.vue'
 
 type NoteBlock =
   | { kind: 'highlight'; key: string; highlight: Highlight; thoughts: Review[] }
@@ -17,6 +18,9 @@ const currentUid = ref<number | null>(null)
 const flashUid = ref<number | null>(null)
 const cardOpen = ref(false)
 const cardReady = ref(false)
+const exporting = ref(false)
+const exportError = ref('')
+const starring = ref('')
 const heroCover = ref<HTMLElement | null>(null)
 const sheetEl = ref<HTMLElement | null>(null)
 let flashTimer: number | undefined
@@ -93,6 +97,56 @@ function onTocClick(_event: MouseEvent, uid: number) {
   scrollToChapter(uid)
   const url = `${window.location.pathname}${window.location.search}#ch-${uid}`
   history.replaceState(history.state, '', url)
+}
+
+async function scrollToHighlight(bookmarkId: string) {
+  await nextTick()
+  const el = document.getElementById(`hl-${bookmarkId}`)
+  if (!el) return
+  await animateScroll(window, window.scrollY + el.getBoundingClientRect().top - headerOffset())
+  el.classList.add('is-flash')
+  window.setTimeout(() => el.classList.remove('is-flash'), 1400)
+}
+
+function hashTarget() {
+  const hash = route.hash || window.location.hash
+  const hl = /^#hl-(.+)$/.exec(hash)
+  if (hl) {
+    try {
+      return { type: 'hl' as const, id: decodeURIComponent(hl[1]) }
+    } catch {
+      return { type: 'hl' as const, id: hl[1] }
+    }
+  }
+  const ch = /^#ch-(\d+)$/.exec(hash)
+  if (ch) return { type: 'ch' as const, id: Number(ch[1]) }
+  return null
+}
+
+async function exportBook(format: 'md' | 'json') {
+  const bookId = String(route.params.bookId || '')
+  if (!bookId || exporting.value) return
+  exporting.value = true
+  exportError.value = ''
+  try {
+    await downloadNotesExport({ bookId, format, filename: title.value })
+  } catch (e) {
+    exportError.value = e instanceof Error ? e.message : '导出失败'
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function toggleStar(highlight: Highlight) {
+  if (!highlight.bookmarkId || starring.value) return
+  starring.value = highlight.bookmarkId
+  const next = !highlight.starred
+  try {
+    await setHighlightStarred(highlight.bookmarkId, next)
+    highlight.starred = next
+  } finally {
+    starring.value = ''
+  }
 }
 
 onUnmounted(() => {
@@ -268,8 +322,9 @@ watch(
     } finally {
       loading.value = false
       await nextTick()
-      const match = /^#ch-(\d+)$/.exec(route.hash || window.location.hash)
-      if (match) scrollToChapter(Number(match[1]))
+      const target = hashTarget()
+      if (target?.type === 'hl') await scrollToHighlight(target.id)
+      else if (target?.type === 'ch') await scrollToChapter(target.id)
     }
   },
   { immediate: true },
@@ -279,6 +334,15 @@ watch(
 <template>
   <section :aria-busy="loading">
     <RouterLink class="back" to="/notes">← 返回书单</RouterLink>
+    <div class="toolbar note-export">
+      <button class="btn" type="button" :disabled="exporting || loading" @click="exportBook('md')">
+        {{ exporting ? '导出中…' : '导出本书 Markdown' }}
+      </button>
+      <button class="btn" type="button" :disabled="exporting || loading" @click="exportBook('json')">
+        导出 JSON
+      </button>
+    </div>
+    <div v-if="exportError" class="error" role="alert">{{ exportError }}</div>
     <div v-if="error" class="error" role="alert">{{ error }}</div>
     <p v-if="loading" class="muted">正在展开书页…</p>
     <template v-else-if="data">
@@ -346,18 +410,26 @@ watch(
               <article
                 v-for="block in chapterBlocks(ch)"
                 :key="block.key"
+                :id="block.kind === 'highlight' ? 'hl-' + block.highlight.bookmarkId : undefined"
                 class="note-card"
                 :class="block.kind === 'highlight' ? 'is-mark' : 'is-idea'"
               >
                 <template v-if="block.kind === 'highlight'">
                   <header class="note-meta">
                     <span class="note-kind">划线</span>
-                    <time
-                      v-if="block.highlight.createTime"
-                      :datetime="dateAttr(block.highlight.createTime)"
-                    >
-                      {{ formatNoteDate(block.highlight.createTime) }}
-                    </time>
+                    <span class="note-meta-actions">
+                      <time
+                        v-if="block.highlight.createTime"
+                        :datetime="dateAttr(block.highlight.createTime)"
+                      >
+                        {{ formatNoteDate(block.highlight.createTime) }}
+                      </time>
+                      <StarMark
+                        :starred="!!block.highlight.starred"
+                        :busy="starring === block.highlight.bookmarkId"
+                        @toggle="toggleStar(block.highlight)"
+                      />
+                    </span>
                   </header>
                   <blockquote class="mark-text">{{ block.highlight.markText }}</blockquote>
                   <div

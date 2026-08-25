@@ -3,6 +3,7 @@ import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { RandomHighlight } from '../types'
 import HighlightFigure from './HighlightFigure.vue'
 import { downloadHighlightCard, highlightExportFilename } from './exportCard'
+import { setHighlightStarred } from '../api'
 import type { HighlightDisplay } from './types'
 
 const props = defineProps<{
@@ -15,6 +16,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   closed: []
   go: [delta: number]
+  starred: [bookmarkId: string, starred: boolean]
 }>()
 
 const stageEl = ref<HTMLElement | null>(null)
@@ -22,6 +24,7 @@ const frameEl = ref<HTMLElement | null>(null)
 const closeBtn = ref<HTMLButtonElement | null>(null)
 const motionLock = ref(false)
 const exporting = ref(false)
+const starring = ref(false)
 const exportHint = ref('')
 const slideName = ref('slip-slide-next')
 const allowSlide = ref(false)
@@ -111,6 +114,21 @@ async function requestClose() {
   emit('closed')
 }
 
+async function toggleStar() {
+  if (starring.value || motionLock.value || !props.item.bookmarkId) return
+  starring.value = true
+  const next = !props.item.starred
+  try {
+    await setHighlightStarred(props.item.bookmarkId, next)
+    emit('starred', props.item.bookmarkId, next)
+  } catch (err) {
+    console.warn(err)
+    exportHint.value = '星标没写上，请稍后重试'
+  } finally {
+    starring.value = false
+  }
+}
+
 async function shareCard() {
   if (exporting.value || motionLock.value) return
   const root = frameEl.value
@@ -188,6 +206,25 @@ watch(
   <div class="slip-lightbox" :data-display="display" role="dialog" aria-modal="true" aria-labelledby="slip-focus-title">
     <button class="slip-lightbox-scrim" type="button" aria-label="关闭摘抄" @click="requestClose" />
     <div class="slip-lightbox-tools">
+      <button
+        class="slip-lightbox-share"
+        type="button"
+        :class="{ on: item.starred }"
+        :aria-pressed="!!item.starred"
+        :aria-label="item.starred ? '取消星标' : '收入金句'"
+        :disabled="starring"
+        @click="toggleStar"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 3.6 14.4 9l6 .5-4.6 3.9 1.5 5.8L12 16.7 6.7 19.2 8.2 13.4 3.6 9.5l6-.5z"
+            :fill="item.starred ? 'currentColor' : 'none'"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
       <button
         class="slip-lightbox-share"
         type="button"

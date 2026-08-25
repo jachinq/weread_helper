@@ -42,8 +42,13 @@ func (s *Server) Register(r *gin.Engine) {
 	api.GET("/highlights/random", s.randomHighlights)
 	api.POST("/highlights/random", s.refreshHighlights)
 	api.GET("/highlights/on-this-day", s.onThisDayHighlights)
+	api.GET("/highlights/starred", s.starredHighlights)
+	api.PUT("/highlights/star", s.setHighlightStar)
+	api.GET("/search", s.searchNotes)
+	api.GET("/export", s.exportAll)
 	api.GET("/books/:bookId", s.book)
 	api.GET("/books/:bookId/notes", s.notes)
+	api.GET("/books/:bookId/export", s.exportBook)
 	api.GET("/stats", s.stats)
 	api.POST("/stats/fetch", s.statsFetch)
 	api.GET("/report/years", s.reportYears)
@@ -72,7 +77,7 @@ func (s *Server) refreshHighlights(c *gin.Context) {
 func highlightItemsJSON(items []store.RandomHighlight) []gin.H {
 	out := make([]gin.H, 0, len(items))
 	for _, h := range items {
-		out = append(out, gin.H{
+		item := gin.H{
 			"bookmarkId": h.BookmarkID,
 			"bookId":     h.BookID,
 			"markText":   h.MarkText,
@@ -80,7 +85,12 @@ func highlightItemsJSON(items []store.RandomHighlight) []gin.H {
 			"title":      h.Title,
 			"author":     h.Author,
 			"cover":      h.Cover,
-		})
+			"starred":    h.Starred,
+		}
+		if h.Chapter != "" {
+			item["chapterTitle"] = h.Chapter
+		}
+		out = append(out, item)
 	}
 	return out
 }
@@ -247,6 +257,7 @@ func (s *Server) notes(c *gin.Context) {
 			"createTime": h.CreateTime,
 			"range":      h.Range,
 			"colorStyle": conv.ParseJSONAny(h.ColorStyle),
+			"starred":    h.Starred,
 		})
 	}
 	reviews := make([]any, 0, len(revs))
@@ -624,6 +635,7 @@ type highlightItem struct {
 	CreateTime int64  `json:"createTime"`
 	ColorStyle any    `json:"colorStyle,omitempty"`
 	Range      string `json:"range,omitempty"`
+	Starred    bool   `json:"starred,omitempty"`
 }
 
 type reviewItem struct {
@@ -723,12 +735,14 @@ func groupNotes(chaptersRaw, highlightsRaw map[string]any, reviews []any) []chap
 			text, _ := m["markText"].(string)
 			ct, _ := conv.AsInt64(m["createTime"])
 			rangeStr, _ := m["range"].(string)
+			starred, _ := m["starred"].(bool)
 			g.Highlights = append(g.Highlights, highlightItem{
 				BookmarkID: id,
 				MarkText:   text,
 				CreateTime: ct,
 				ColorStyle: m["colorStyle"],
 				Range:      rangeStr,
+				Starred:    starred,
 			})
 			titleByUID[uid] = g
 		}

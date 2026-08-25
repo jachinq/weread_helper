@@ -23,6 +23,7 @@ export type Highlight = {
   createTime: number
   colorStyle?: unknown
   range?: string
+  starred?: boolean
 }
 
 export type Review = {
@@ -167,6 +168,31 @@ export type RandomHighlight = {
   title: string
   author: string
   cover: string
+  starred?: boolean
+  chapterTitle?: string
+}
+
+export type NoteSearchHit = {
+  kind: 'highlight' | 'review' | string
+  bookmarkId?: string
+  reviewId?: string
+  bookId: string
+  title: string
+  author: string
+  cover: string
+  chapterUid: number
+  chapterTitle: string
+  markText: string
+  content: string
+  abstract: string
+  createTime: number
+  starred?: boolean
+}
+
+export type SearchNotesResponse = {
+  query?: string
+  kind?: string
+  items: NoteSearchHit[]
 }
 
 export type RandomHighlightsResponse = {

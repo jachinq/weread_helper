@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { fetchNotebooks } from '../api'
+import { fetchNotebooks, downloadNotesExport } from '../api'
 import type { NotebookBook } from '../types'
+import NotesSubnav from './NotesSubnav.vue'
 
 const books = ref<NotebookBook[]>([])
 const loading = ref(false)
@@ -13,6 +14,8 @@ const totals = ref({ books: 0, notes: 0 })
 const broken = ref<Record<string, boolean>>({})
 const query = ref('')
 const appliedQuery = ref('')
+const exporting = ref(false)
+const exportError = ref('')
 let debounce: ReturnType<typeof setTimeout> | undefined
 let seq = 0
 
@@ -79,6 +82,19 @@ watch(query, () => {
 })
 
 onMounted(() => load(true))
+
+async function exportAll(format: 'md' | 'json') {
+  if (exporting.value) return
+  exporting.value = true
+  exportError.value = ''
+  try {
+    await downloadNotesExport({ format, filename: '纸间笔记-全部' })
+  } catch (e) {
+    exportError.value = e instanceof Error ? e.message : '导出失败'
+  } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -88,6 +104,7 @@ onMounted(() => load(true))
       <template v-if="appliedQuery">匹配 {{ totals.books }} 本 · 笔记约 {{ totals.notes || '—' }} 条</template>
       <template v-else>共 {{ totals.books || books.length }} 本 · 笔记约 {{ totals.notes || '—' }} 条</template>
     </p>
+    <NotesSubnav />
     <div class="toolbar">
       <label class="sr-only" for="note-search">按书名或作者筛选</label>
       <input
@@ -98,7 +115,14 @@ onMounted(() => load(true))
         placeholder="书名或作者"
         autocomplete="off"
       />
+      <button class="btn" type="button" :disabled="exporting || !books.length" @click="exportAll('md')">
+        {{ exporting ? '导出中…' : '导出 Markdown' }}
+      </button>
+      <button class="btn" type="button" :disabled="exporting || !books.length" @click="exportAll('json')">
+        导出 JSON
+      </button>
     </div>
+    <div v-if="exportError" class="error" role="alert">{{ exportError }}</div>
     <div v-if="error" class="error" role="alert">{{ error }}</div>
     <div v-if="loading && !books.length" class="grid" aria-hidden="true">
       <div v-for="n in 6" :key="n" class="card skeleton">

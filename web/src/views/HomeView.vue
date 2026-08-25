@@ -112,6 +112,13 @@ function go(delta: number) {
   focused.value = (focused.value + delta + activeItems.value.length) % activeItems.value.length
 }
 
+function onStarred(bookmarkId: string, starred: boolean) {
+  const patch = (list: RandomHighlight[]) =>
+    list.map((item) => (item.bookmarkId === bookmarkId ? { ...item, starred } : item))
+  pool.value = patch(pool.value)
+  otdPool.value = patch(otdPool.value)
+}
+
 onMounted(() => {
   void fetchSettings()
     .then((s) => {
@@ -212,6 +219,7 @@ onUnmounted(() => {
         :source-el="sourceEl"
         @closed="onClosed"
         @go="go"
+        @starred="onStarred"
       />
     </Teleport>
   </section>

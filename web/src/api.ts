@@ -8,6 +8,7 @@ import type {
   AppSettings,
   YearReport,
   ReportYears,
+  SearchNotesResponse,
 } from './types'
 
 async function getJson<T>(url: string): Promise<T> {
@@ -49,6 +50,74 @@ export function fetchNotebooks(count = 40, lastSort?: number, query?: string) {
 
 export function fetchNotes(bookId: string) {
   return getJson<NotesResponse>(`/api/books/${encodeURIComponent(bookId)}/notes`)
+}
+
+export function searchNotes(query: string, kind = 'all', limit = 40) {
+  const q = new URLSearchParams({ q: query.trim(), kind, limit: String(limit) })
+  return getJson<SearchNotesResponse>(`/api/search?${q}`)
+}
+
+export function fetchStarredHighlights(limit = 80) {
+  return getJson<RandomHighlightsResponse>(`/api/highlights/starred?limit=${limit}`)
+}
+
+export function setHighlightStarred(bookmarkId: string, starred: boolean) {
+  return fetch('/api/highlights/star', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookmarkId, starred }),
+  }).then(async (res) => {
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const msg = (data as { error?: string }).error || `请求失败 (${res.status})`
+      throw new Error(msg)
+    }
+    return data as { bookmarkId: string; starred: boolean }
+  })
+}
+
+export async function downloadNotesExport(opts?: { bookId?: string; format?: 'md' | 'json'; filename?: string }) {
+  const format = opts?.format || 'md'
+  const url = opts?.bookId
+    ? `/api/books/${encodeURIComponent(opts.bookId)}/export?format=${format}`
+    : `/api/export?format=${format}`
+  const res = await fetch(url)
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error || `导出失败 (${res.status})`)
+  }
+  const blob = await res.blob()
+  const fallback = opts?.bookId ? `笔记.${format}` : `纸间笔记-全部.${format}`
+  const name = sanitizeDownloadName(opts?.filename || filenameFromDisposition(res.headers.get('Content-Disposition') || ''), format) || fallback
+  const a = document.createElement('a')
+  const href = URL.createObjectURL(blob)
+  a.href = href
+  a.download = name
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.setTimeout(() => URL.revokeObjectURL(href), 1000)
+}
+
+function filenameFromDisposition(disp: string) {
+  const star = /filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i.exec(disp)
+  if (star?.[1]) {
+    try {
+      return decodeURIComponent(star[1].trim().replace(/^UTF-8''/i, '').replace(/"/g, ''))
+    } catch {
+      /* ignore */
+    }
+  }
+  const quoted = /filename\s*=\s*"([^"]+)"/i.exec(disp)
+  if (quoted?.[1] && /^[\x20-\x7e]+$/.test(quoted[1])) return quoted[1]
+  return ''
+}
+
+function sanitizeDownloadName(name: string, format: string) {
+  const cleaned = name.replace(/[\\/:*?"<>|]/g, '_').trim()
+  if (!cleaned) return ''
+  const ext = `.${format}`
+  return cleaned.toLowerCase().endsWith(ext) ? cleaned : `${cleaned}${ext}`
 }
 
 export async function fetchStats(

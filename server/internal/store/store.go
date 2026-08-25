@@ -96,13 +96,15 @@ type Highlight struct {
 	CreateTime int64
 	Range      string
 	ColorStyle string
+	Starred    bool
 }
 
 type RandomHighlight struct {
 	Highlight
-	Title  string
-	Author string
-	Cover  string
+	Title   string
+	Author  string
+	Cover   string
+	Chapter string
 }
 
 type Review struct {
@@ -272,13 +274,6 @@ func placeholders(n int) string {
 	return strings.Repeat("?,", n-1) + "?"
 }
 
-func escapeLike(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `%`, `\%`)
-	s = strings.ReplaceAll(s, `_`, `\_`)
-	return s
-}
-
 func (s *Store) ListNotebooks(count int, lastSort int64, query string) (books []*Book, totalBooks int, totalNotes int, hasMore bool, err error) {
 	if count <= 0 {
 		count = 40
@@ -287,9 +282,8 @@ func (s *Store) ListNotebooks(count int, lastSort int64, query string) (books []
 	countArgs := []any{}
 	query = strings.TrimSpace(query)
 	if query != "" {
-		pat := "%" + escapeLike(query) + "%"
-		where += ` AND (title LIKE ? ESCAPE '\' OR author LIKE ? ESCAPE '\')`
-		countArgs = append(countArgs, pat, pat)
+		where += ` AND (instr(lower(title), lower(?)) > 0 OR instr(lower(author), lower(?)) > 0)`
+		countArgs = append(countArgs, query, query)
 	}
 	err = s.DB.QueryRow(`SELECT COUNT(*), COALESCE(SUM(note_count+review_count+bookmark_count),0) FROM books WHERE `+where, countArgs...).Scan(&totalBooks, &totalNotes)
 	if err != nil {
@@ -420,12 +414,14 @@ func scanRandomHighlights(rows *sql.Rows) ([]RandomHighlight, error) {
 	var out []RandomHighlight
 	for rows.Next() {
 		var h RandomHighlight
+		var starred int
 		if err := rows.Scan(
 			&h.BookmarkID, &h.BookID, &h.ChapterUID, &h.MarkText, &h.CreateTime, &h.Range, &h.ColorStyle,
-			&h.Title, &h.Author, &h.Cover,
+			&h.Title, &h.Author, &h.Cover, &starred,
 		); err != nil {
 			return nil, err
 		}
+		h.Starred = starred != 0
 		out = append(out, h)
 	}
 	if out == nil {
@@ -438,9 +434,11 @@ func (s *Store) RandomHighlights(limit int) ([]RandomHighlight, error) {
 	limit = clampHighlightLimit(limit)
 	rows, err := s.DB.Query(`
 SELECT h.bookmark_id, h.book_id, h.chapter_uid, h.mark_text, h.create_time, h.range, h.color_style,
-       b.title, b.author, b.cover
+       b.title, b.author, b.cover,
+       CASE WHEN s.bookmark_id IS NULL THEN 0 ELSE 1 END
 FROM highlights h
 JOIN books b ON b.book_id = h.book_id
+LEFT JOIN starred_highlights s ON s.bookmark_id = h.bookmark_id
 WHERE TRIM(h.mark_text) != ''
 ORDER BY RANDOM()
 LIMIT ?`, limit)
@@ -459,9 +457,11 @@ func (s *Store) HighlightsOnThisDay(now time.Time, limit int) ([]RandomHighlight
 	year := today.Year()
 	rows, err := s.DB.Query(`
 SELECT h.bookmark_id, h.book_id, h.chapter_uid, h.mark_text, h.create_time, h.range, h.color_style,
-       b.title, b.author, b.cover
+       b.title, b.author, b.cover,
+       CASE WHEN s.bookmark_id IS NULL THEN 0 ELSE 1 END
 FROM highlights h
 JOIN books b ON b.book_id = h.book_id
+LEFT JOIN starred_highlights s ON s.bookmark_id = h.bookmark_id
 WHERE TRIM(h.mark_text) != ''
   AND strftime('%m-%d', h.create_time, 'unixepoch', '+8 hours') = ?
   AND CAST(strftime('%Y', h.create_time, 'unixepoch', '+8 hours') AS INTEGER) < ?
@@ -475,7 +475,12 @@ LIMIT ?`, monthDay, year, limit)
 }
 
 func (s *Store) ListHighlights(bookID string) ([]Highlight, error) {
-	rows, err := s.DB.Query(`SELECT bookmark_id, book_id, chapter_uid, mark_text, create_time, range, color_style FROM highlights WHERE book_id=?`, bookID)
+	rows, err := s.DB.Query(`
+SELECT h.bookmark_id, h.book_id, h.chapter_uid, h.mark_text, h.create_time, h.range, h.color_style,
+       CASE WHEN s.bookmark_id IS NULL THEN 0 ELSE 1 END
+FROM highlights h
+LEFT JOIN starred_highlights s ON s.bookmark_id = h.bookmark_id
+WHERE h.book_id=?`, bookID)
 	if err != nil {
 		return nil, err
 	}
@@ -483,9 +488,11 @@ func (s *Store) ListHighlights(bookID string) ([]Highlight, error) {
 	var out []Highlight
 	for rows.Next() {
 		var h Highlight
-		if err := rows.Scan(&h.BookmarkID, &h.BookID, &h.ChapterUID, &h.MarkText, &h.CreateTime, &h.Range, &h.ColorStyle); err != nil {
+		var starred int
+		if err := rows.Scan(&h.BookmarkID, &h.BookID, &h.ChapterUID, &h.MarkText, &h.CreateTime, &h.Range, &h.ColorStyle, &starred); err != nil {
 			return nil, err
 		}
+		h.Starred = starred != 0
 		out = append(out, h)
 	}
 	return out, rows.Err()
