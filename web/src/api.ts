@@ -76,7 +76,7 @@ export function setHighlightStarred(bookmarkId: string, starred: boolean) {
   })
 }
 
-export async function downloadNotesExport(opts?: { bookId?: string; format?: 'md' | 'json'; filename?: string }) {
+export async function fetchNotesExport(opts?: { bookId?: string; format?: 'md' | 'json' }) {
   const format = opts?.format || 'md'
   const url = opts?.bookId
     ? `/api/books/${encodeURIComponent(opts.bookId)}/export?format=${format}`
@@ -86,6 +86,12 @@ export async function downloadNotesExport(opts?: { bookId?: string; format?: 'md
     const data = await res.json().catch(() => ({}))
     throw new Error((data as { error?: string }).error || `导出失败 (${res.status})`)
   }
+  return res
+}
+
+export async function downloadNotesExport(opts?: { bookId?: string; format?: 'md' | 'json'; filename?: string }) {
+  const format = opts?.format || 'md'
+  const res = await fetchNotesExport(opts)
   const blob = await res.blob()
   const fallback = opts?.bookId ? `笔记.${format}` : `纸间笔记-全部.${format}`
   const name = sanitizeDownloadName(opts?.filename || filenameFromDisposition(res.headers.get('Content-Disposition') || ''), format) || fallback

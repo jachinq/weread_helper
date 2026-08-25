@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { fetchNotes, downloadNotesExport, setHighlightStarred } from '../api'
+import { fetchNotes, downloadNotesExport, fetchNotesExport, setHighlightStarred } from '../api'
 import type { ChapterNotes, Highlight, NotesResponse, Review } from '../types'
 import StarMark from './StarMark.vue'
 
@@ -19,7 +19,10 @@ const flashUid = ref<number | null>(null)
 const cardOpen = ref(false)
 const cardReady = ref(false)
 const exporting = ref(false)
+const copying = ref(false)
 const exportError = ref('')
+const copyHint = ref('')
+let copyHintTimer: number | undefined
 const starring = ref('')
 const heroCover = ref<HTMLElement | null>(null)
 const sheetEl = ref<HTMLElement | null>(null)
@@ -125,15 +128,55 @@ function hashTarget() {
 
 async function exportBook(format: 'md' | 'json') {
   const bookId = String(route.params.bookId || '')
-  if (!bookId || exporting.value) return
+  if (!bookId || exporting.value || copying.value) return
   exporting.value = true
   exportError.value = ''
+  copyHint.value = ''
   try {
     await downloadNotesExport({ bookId, format, filename: title.value })
   } catch (e) {
     exportError.value = e instanceof Error ? e.message : '导出失败'
   } finally {
     exporting.value = false
+  }
+}
+
+async function writeClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.setAttribute('readonly', '')
+  ta.style.position = 'fixed'
+  ta.style.left = '-9999px'
+  document.body.appendChild(ta)
+  ta.select()
+  const ok = document.execCommand('copy')
+  ta.remove()
+  if (!ok) throw new Error('浏览器不允许写入剪贴板')
+}
+
+async function copyBookMarkdown() {
+  const bookId = String(route.params.bookId || '')
+  if (!bookId || exporting.value || copying.value) return
+  copying.value = true
+  exportError.value = ''
+  copyHint.value = ''
+  try {
+    const res = await fetchNotesExport({ bookId, format: 'md' })
+    const text = await res.text()
+    await writeClipboard(text)
+    copyHint.value = '已复制 Markdown 到剪贴板'
+    if (copyHintTimer) window.clearTimeout(copyHintTimer)
+    copyHintTimer = window.setTimeout(() => {
+      if (copyHint.value === '已复制 Markdown 到剪贴板') copyHint.value = ''
+    }, 2400)
+  } catch (e) {
+    exportError.value = e instanceof Error ? e.message : '复制失败'
+  } finally {
+    copying.value = false
   }
 }
 
@@ -151,6 +194,7 @@ async function toggleStar(highlight: Highlight) {
 
 onUnmounted(() => {
   if (flashTimer) window.clearTimeout(flashTimer)
+  if (copyHintTimer) window.clearTimeout(copyHintTimer)
   if (scrollRaf) cancelAnimationFrame(scrollRaf)
   lockScroll(false)
   window.removeEventListener('keydown', onOverlayKey)
@@ -335,14 +379,18 @@ watch(
   <section :aria-busy="loading">
     <RouterLink class="back" to="/notes">← 返回书单</RouterLink>
     <div class="toolbar note-export">
-      <button class="btn" type="button" :disabled="exporting || loading" @click="exportBook('md')">
+      <button class="btn" type="button" :disabled="exporting || copying || loading" @click="exportBook('md')">
         {{ exporting ? '导出中…' : '导出本书 Markdown' }}
       </button>
-      <button class="btn" type="button" :disabled="exporting || loading" @click="exportBook('json')">
+      <button class="btn" type="button" :disabled="exporting || copying || loading" @click="copyBookMarkdown">
+        {{ copying ? '复制中…' : '复制 Markdown 到剪贴板' }}
+      </button>
+      <button class="btn" type="button" :disabled="exporting || copying || loading" @click="exportBook('json')">
         导出 JSON
       </button>
     </div>
     <div v-if="exportError" class="error" role="alert">{{ exportError }}</div>
+    <p v-if="copyHint" class="muted" role="status">{{ copyHint }}</p>
     <div v-if="error" class="error" role="alert">{{ error }}</div>
     <p v-if="loading" class="muted">正在展开书页…</p>
     <template v-else-if="data">
