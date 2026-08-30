@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { fetchOnThisDayHighlights, fetchRandomHighlights, fetchSettings, refreshRandomHighlights } from '../api'
 import HighlightFigure from '../highlights/HighlightFigure.vue'
 import HighlightLightbox from '../highlights/HighlightLightbox.vue'
-import { HIGHLIGHT_DISPLAYS, normalizeHighlightDisplay, type HighlightDisplay } from '../highlights/types'
+import { HIGHLIGHT_DISPLAYS, nextHighlightDisplay, normalizeHighlightDisplay, type HighlightDisplay } from '../highlights/types'
 import type { RandomHighlight } from '../types'
 
 type LightboxKind = 'today' | 'otd'
@@ -105,6 +105,10 @@ function onClosed() {
   lightboxKind.value = null
   focused.value = null
   lastFocus?.focus()
+}
+
+function cycleDisplay() {
+  display.value = nextHighlightDisplay(display.value)
 }
 
 function go(delta: number) {
@@ -220,6 +224,7 @@ onUnmounted(() => {
         @closed="onClosed"
         @go="go"
         @starred="onStarred"
+        @cycle-display="cycleDisplay"
       />
     </Teleport>
   </section>

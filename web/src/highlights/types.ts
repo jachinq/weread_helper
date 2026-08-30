@@ -17,3 +17,9 @@ export function normalizeHighlightDisplay(s: string | undefined): HighlightDispl
   if (HIGHLIGHT_DISPLAYS.some((x) => x.id === id)) return id as HighlightDisplay
   return 'card'
 }
+
+export function nextHighlightDisplay(current: HighlightDisplay): HighlightDisplay {
+  const i = HIGHLIGHT_DISPLAYS.findIndex((x) => x.id === current)
+  const idx = i < 0 ? 0 : (i + 1) % HIGHLIGHT_DISPLAYS.length
+  return HIGHLIGHT_DISPLAYS[idx]!.id
+}

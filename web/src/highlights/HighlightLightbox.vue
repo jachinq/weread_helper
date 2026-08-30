@@ -4,7 +4,7 @@ import type { RandomHighlight } from '../types'
 import HighlightFigure from './HighlightFigure.vue'
 import { downloadHighlightCard, highlightExportFilename } from './exportCard'
 import { setHighlightStarred } from '../api'
-import type { HighlightDisplay } from './types'
+import { HIGHLIGHT_DISPLAYS, nextHighlightDisplay, type HighlightDisplay } from './types'
 
 const props = defineProps<{
   display: HighlightDisplay
@@ -17,6 +17,7 @@ const emit = defineEmits<{
   closed: []
   go: [delta: number]
   starred: [bookmarkId: string, starred: boolean]
+  cycleDisplay: []
 }>()
 
 const stageEl = ref<HTMLElement | null>(null)
@@ -145,6 +146,15 @@ async function shareCard() {
   }
 }
 
+function cycleDisplay() {
+  if (motionLock.value || exporting.value) return
+  emit('cycleDisplay')
+}
+
+function displayLabel(id: HighlightDisplay) {
+  return HIGHLIGHT_DISPLAYS.find((x) => x.id === id)?.label ?? id
+}
+
 function go(delta: number) {
   if (props.total < 2 || motionLock.value || exporting.value) return
   slideName.value = delta > 0 ? 'slip-slide-next' : 'slip-slide-prev'
@@ -206,6 +216,24 @@ watch(
   <div class="slip-lightbox" :data-display="display" role="dialog" aria-modal="true" aria-labelledby="slip-focus-title">
     <button class="slip-lightbox-scrim" type="button" aria-label="关闭摘抄" @click="requestClose" />
     <div class="slip-lightbox-tools">
+      <button
+        class="slip-lightbox-share"
+        type="button"
+        :aria-label="`切换样式，下一个是${displayLabel(nextHighlightDisplay(display))}`"
+        title="切换样式"
+        :disabled="exporting"
+        @click="cycleDisplay"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M7 4.5h8.5A2.5 2.5 0 0 1 18 7v9.5M17 19.5H8.5A2.5 2.5 0 0 1 6 17V7.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
       <button
         class="slip-lightbox-share"
         type="button"
