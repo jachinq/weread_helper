@@ -1282,7 +1282,7 @@ a {
 .home-spread[data-display="reader"] {
   width: min(42rem, 100%);
   margin-inline: auto;
-  gap: 52px;
+  gap: 20px;
   padding: 8px 0 40px;
 }
 
@@ -1294,6 +1294,7 @@ a {
 .home-spread[data-display="share"] {
   gap: 16px;
   padding: 8px 0 28px;
+  align-items: start;
 }
 
 @media (min-width: 720px) {
@@ -1349,7 +1350,7 @@ a {
 
   .home-spread[data-display="polaroid"][data-count="3"] .hl-tile:last-child {
     grid-column: 1 / -1;
-    max-width: 48%;
+    max-width: 280px;
   }
 
   .home-spread[data-display="share"] {
@@ -1538,7 +1539,7 @@ a {
 
 .home-spread[data-display="polaroid"] .hl-tile {
   width: 100%;
-  max-width: 380px;
+  max-width: 280px;
 }
 
 .hl-tile.skeleton {
@@ -1590,16 +1591,16 @@ a {
 
 .slip-cover {
   position: absolute;
-  right: -12%;
-  bottom: -8%;
-  width: 58%;
-  height: 78%;
-  object-fit: cover;
-  opacity: 0.14;
-  filter: grayscale(0.3) sepia(0.3);
+  right: 20px;
+  bottom: 72px;
+  width: 72px;
+  height: 108px;
+  object-fit: contain;
+  object-position: bottom right;
+  opacity: 0.46;
+  filter: grayscale(0.12) sepia(0.18);
   pointer-events: none;
   z-index: 0;
-  mask-image: linear-gradient(135deg, transparent 20%, #000 70%);
 }
 
 .slip-seal {
@@ -1622,7 +1623,7 @@ a {
   position: relative;
   z-index: 1;
   margin: 8px 0 0;
-  padding: 0;
+  padding: 0 80px 0 0;
   flex: 1;
   font-size: 18px;
   line-height: 1.85;
@@ -1800,11 +1801,20 @@ body.slip-lightbox-lock {
   transform: none;
 }
 
+.slip-focus .slip-cover {
+  width: 96px;
+  height: 144px;
+  right: 26px;
+  bottom: 84px;
+  opacity: 0.55;
+}
+
 .slip-focus .slip-quote {
   -webkit-line-clamp: unset;
   overflow: auto;
   max-height: min(48vh, 380px);
   font-size: 20px;
+  padding-right: 112px;
 }
 
 .slip-focus.is-exporting .slip-quote,
@@ -1867,13 +1877,20 @@ body.slip-lightbox-lock {
 }
 
 .slip-lightbox[data-display="polaroid"] .slip-stage {
-  width: min(380px, calc(100vw - 48px));
+  width: min(320px, calc(100vw - 48px));
   min-height: 0;
 }
 
+.slip-lightbox[data-display="share"] {
+  overflow-y: auto;
+  align-content: safe center;
+  place-items: safe center;
+}
+
 .slip-lightbox[data-display="share"] .slip-stage {
-  width: min(440px, calc(100vw - 48px));
+  width: min(520px, calc(100vw - 48px));
   min-height: 0;
+  margin-block: 8px 24px;
 }
 
 .hl-poster {
@@ -1888,7 +1905,7 @@ body.slip-lightbox-lock {
   color: var(--color-paper);
 }
 
-.hl-poster-bg {
+.hl-poster-wash {
   position: absolute;
   inset: -8%;
   width: 116%;
@@ -1898,19 +1915,50 @@ body.slip-lightbox-lock {
   z-index: 0;
 }
 
+.hl-poster:not(.hl-poster--tile) .hl-poster-wash {
+  filter: grayscale(0.4) saturate(0.55) blur(32px);
+  transform: scale(1.16);
+}
+
+.hl-poster-face {
+  position: absolute;
+  left: 50%;
+  top: 7%;
+  width: min(42vw, 280px);
+  height: 56%;
+  transform: translateX(-50%);
+  object-fit: contain;
+  object-position: center top;
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 18px 36px color-mix(in srgb, var(--color-bg) 55%, transparent));
+}
+
 .hl-poster-veil {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 2;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--color-bg) 35%, transparent) 0%, color-mix(in srgb, var(--color-bg) 82%, transparent) 100%);
+}
+
+.hl-poster:not(.hl-poster--tile) .hl-poster-veil {
+  z-index: 1;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-bg) 18%, transparent) 0%,
+      color-mix(in srgb, var(--color-bg) 12%, transparent) 42%,
+      color-mix(in srgb, var(--color-bg) 78%, transparent) 72%,
+      color-mix(in srgb, var(--color-bg) 88%, transparent) 100%
+    );
 }
 
 .hl-poster-kicker,
 .hl-poster-quote,
 .hl-poster-meta {
   position: relative;
-  z-index: 2;
+  z-index: 3;
 }
 
 .hl-poster-kicker {
@@ -1943,8 +1991,12 @@ body.slip-lightbox-lock {
 }
 
 .hl-reader {
-  padding: 12px 8px 24px;
-  color: var(--color-text);
+  padding: 28px 30px 24px;
+  color: var(--color-paper);
+  background: color-mix(in srgb, var(--color-ink) 88%, var(--color-bg-lift));
+  border: 1px solid color-mix(in srgb, var(--color-accent-2) 26%, transparent);
+  border-radius: 0;
+  box-shadow: inset 3px 0 0 var(--gold);
 }
 
 .hl-reader-kicker {
@@ -1952,7 +2004,7 @@ body.slip-lightbox-lock {
   font-family: var(--font-ui);
   font-size: 11px;
   letter-spacing: 0.32em;
-  color: var(--color-text-muted);
+  color: var(--gold);
 }
 
 .hl-reader-quote {
@@ -1962,17 +2014,44 @@ body.slip-lightbox-lock {
   font-size: clamp(18px, 2.4vw, 22px);
   line-height: 1.85;
   overflow-wrap: anywhere;
+  color: var(--color-paper);
 }
 
 .hl-reader-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  align-items: center;
+  gap: 12px 16px;
   margin-top: 36px;
   padding-top: 16px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid color-mix(in srgb, var(--color-paper) 16%, transparent);
   font-family: var(--font-ui);
   font-size: 13px;
+  color: color-mix(in srgb, var(--color-paper) 62%, transparent);
+}
+
+.hl-reader-cover {
+  width: 36px;
+  height: 54px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.hl-reader-byline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  min-width: 0;
+}
+
+.hl-reader-byline cite {
+  font-style: normal;
+  color: var(--color-paper);
+}
+
+.hl-reader .slip-title-link:hover cite {
+  color: var(--gold);
+  border-bottom-color: color-mix(in srgb, var(--gold) 55%, transparent);
 }
 
 .hl-polaroid {
@@ -1985,15 +2064,15 @@ body.slip-lightbox-lock {
 }
 
 .hl-polaroid-photo {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 2 / 3;
   overflow: hidden;
-  background: color-mix(in srgb, var(--color-bg) 18%, var(--color-paper));
+  background: color-mix(in srgb, var(--color-bg) 10%, var(--color-paper));
 }
 
 .hl-polaroid-photo img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -2026,14 +2105,51 @@ body.slip-lightbox-lock {
 }
 
 .hl-share {
-  aspect-ratio: 1;
   display: flex;
-  flex-direction: column;
-  padding: 28px 26px 22px;
+  flex-direction: row;
+  align-items: stretch;
+  height: auto;
+  padding: 0;
+  overflow: visible;
   background: var(--color-bg);
   color: var(--color-text);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-page);
+}
+
+.hl-share-spine {
+  flex: 0 0 80px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  padding: 16px 0 16px 14px;
+  background: color-mix(in srgb, var(--color-bg) 86%, var(--color-ink));
+}
+
+.hl-share-cover {
+  width: 66px;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  object-fit: contain;
+}
+
+.hl-share-empty {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  aspect-ratio: 2 / 3;
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--cinnabar);
+}
+
+.hl-share-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px 16px 16px;
 }
 
 .hl-share-mark {
@@ -2044,30 +2160,32 @@ body.slip-lightbox-lock {
   color: var(--cinnabar);
 }
 
+.hl-share:not(.hl-share--tile) .hl-share-spine {
+  flex-basis: 96px;
+}
+
+.hl-share:not(.hl-share--tile) .hl-share-cover,
+.hl-share:not(.hl-share--tile) .hl-share-empty {
+  width: 80px;
+}
+
 .hl-share-quote {
-  margin: 20px 0 0;
-  flex: 1;
+  margin: 14px 0 0;
+  flex: 0 1 auto;
   font-family: var(--font-display);
   font-style: normal;
-  font-size: clamp(18px, 3.2vw, 26px);
-  line-height: 1.4;
+  font-size: clamp(16px, 2.2vw, 22px);
+  line-height: 1.55;
   overflow-wrap: anywhere;
 }
 
 .hl-share-meta {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 20px;
-  padding-top: 16px;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 16px;
+  padding-top: 14px;
   border-top: 1px solid var(--color-border);
-}
-
-.hl-share-cover {
-  width: 48px;
-  height: 64px;
-  object-fit: cover;
-  flex-shrink: 0;
 }
 
 .hl-share-meta cite {
@@ -2098,8 +2216,8 @@ body.slip-lightbox-lock {
 
 .hl-reader--tile {
   min-height: 0;
-  padding: 4px 0 28px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 22px 24px 20px;
+  border-bottom: 0;
 }
 
 .hl-reader--tile .hl-reader-quote {
@@ -2128,10 +2246,10 @@ body.slip-lightbox-lock {
 
 .hl-share--tile .hl-share-quote {
   display: -webkit-box;
-  -webkit-line-clamp: 7;
+  -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 18px;
+  font-size: 17px;
 }
 
 .hl-focus-frame {
@@ -2145,6 +2263,10 @@ body.slip-lightbox-lock {
 .hl-focus-frame > .hl-polaroid,
 .hl-focus-frame > .hl-share {
   width: 100%;
+}
+
+.hl-focus-frame:has(.hl-share) {
+  height: auto;
 }
 
 .slip-slide-next-enter-active,

@@ -45,7 +45,13 @@ function displayTitle(title: string | undefined, variant: 'tile' | 'focus') {
   </div>
 
   <div v-else-if="display === 'poster'" class="hl-poster" :class="{ 'hl-poster--tile': variant === 'tile' }">
-    <img v-if="item.cover" class="hl-poster-bg" :src="proxiedCover(item.cover)" alt="" :loading="variant === 'tile' ? 'lazy' : undefined" />
+    <img v-if="item.cover" class="hl-poster-wash" :src="proxiedCover(item.cover)" alt="" :loading="variant === 'tile' ? 'lazy' : undefined" />
+    <img
+      v-if="item.cover && variant === 'focus'"
+      class="hl-poster-face"
+      :src="proxiedCover(item.cover)"
+      alt=""
+    />
     <div class="hl-poster-veil" />
     <p class="hl-poster-kicker">摘抄</p>
     <blockquote class="hl-poster-quote">{{ item.markText }}</blockquote>
@@ -69,18 +75,21 @@ function displayTitle(title: string | undefined, variant: 'tile' | 'focus') {
     <p class="hl-reader-kicker">划线</p>
     <blockquote class="hl-reader-quote">{{ item.markText }}</blockquote>
     <footer class="hl-reader-meta">
-      <RouterLink
-        v-if="variant === 'focus'"
-        :id="titleId"
-        class="slip-title-link"
-        :to="`/notes/${item.bookId}`"
-        @pointerdown.stop
-      >
-        <cite>{{ displayTitle(item.title, variant) }}</cite>
-      </RouterLink>
-      <cite v-else>{{ displayTitle(item.title, variant) }}</cite>
-      <span v-if="item.author">{{ item.author }}</span>
-      <time v-if="item.createTime">{{ formatHighlightDate(item.createTime) }}</time>
+      <img v-if="item.cover" class="hl-reader-cover" :src="proxiedCover(item.cover)" alt="" :loading="variant === 'tile' ? 'lazy' : undefined" />
+      <div class="hl-reader-byline">
+        <RouterLink
+          v-if="variant === 'focus'"
+          :id="titleId"
+          class="slip-title-link"
+          :to="`/notes/${item.bookId}`"
+          @pointerdown.stop
+        >
+          <cite>{{ displayTitle(item.title, variant) }}</cite>
+        </RouterLink>
+        <cite v-else>{{ displayTitle(item.title, variant) }}</cite>
+        <span v-if="item.author">{{ item.author }}</span>
+        <time v-if="item.createTime">{{ formatHighlightDate(item.createTime) }}</time>
+      </div>
     </footer>
   </div>
 
@@ -106,11 +115,14 @@ function displayTitle(title: string | undefined, variant: 'tile' | 'focus') {
   </div>
 
   <div v-else class="hl-share" :class="{ 'hl-share--tile': variant === 'tile' }">
-    <p class="hl-share-mark">摘</p>
-    <blockquote class="hl-share-quote">{{ item.markText }}</blockquote>
-    <footer class="hl-share-meta">
+    <div class="hl-share-spine">
       <img v-if="item.cover" class="hl-share-cover" :src="proxiedCover(item.cover)" alt="" :loading="variant === 'tile' ? 'lazy' : undefined" />
-      <div>
+      <span v-else class="hl-share-empty">{{ (item.title || '摘').slice(0, 1) }}</span>
+    </div>
+    <div class="hl-share-body">
+      <p class="hl-share-mark">摘</p>
+      <blockquote class="hl-share-quote">{{ item.markText }}</blockquote>
+      <footer class="hl-share-meta">
         <RouterLink
           v-if="variant === 'focus'"
           :id="titleId"
@@ -123,7 +135,7 @@ function displayTitle(title: string | undefined, variant: 'tile' | 'focus') {
         <cite v-else>{{ displayTitle(item.title, variant) }}</cite>
         <span v-if="item.author">{{ item.author }}</span>
         <time v-if="item.createTime">{{ formatHighlightDate(item.createTime) }}</time>
-      </div>
-    </footer>
+      </footer>
+    </div>
   </div>
 </template>
