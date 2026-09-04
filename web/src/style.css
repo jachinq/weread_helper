@@ -660,11 +660,17 @@ a {
   padding: 14px 16px 16px;
   background: color-mix(in srgb, var(--color-surface) 6%, transparent);
   border: 1px solid var(--rule);
+  cursor: pointer;
   transition:
     transform var(--dur) var(--ease),
     box-shadow 280ms var(--ease),
     background 280ms var(--ease),
     border-color 280ms var(--ease);
+}
+
+.note-card:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
 }
 
 .note-card.is-mark {

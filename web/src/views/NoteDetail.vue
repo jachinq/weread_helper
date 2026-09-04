@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { fetchNotes, downloadNotesExport, fetchNotesExport, setHighlightStarred } from '../api'
-import type { ChapterNotes, Highlight, NotesResponse, Review } from '../types'
+import { fetchNotes, downloadNotesExport, fetchNotesExport, fetchSettings, setHighlightStarred } from '../api'
+import HighlightLightbox from '../highlights/HighlightLightbox.vue'
+import { nextHighlightDisplay, normalizeHighlightDisplay, type HighlightDisplay } from '../highlights/types'
+import type { ChapterNotes, Highlight, NotesResponse, RandomHighlight, Review } from '../types'
 import StarMark from './StarMark.vue'
 
 type NoteBlock =
@@ -24,6 +26,10 @@ const exportError = ref('')
 const copyHint = ref('')
 let copyHintTimer: number | undefined
 const starring = ref('')
+const highlightDisplay = ref<HighlightDisplay>('card')
+const focusedNote = ref<number | null>(null)
+const noteEls = new Map<string, HTMLElement>()
+let lastNoteFocus: HTMLElement | null = null
 const heroCover = ref<HTMLElement | null>(null)
 const sheetEl = ref<HTMLElement | null>(null)
 let flashTimer: number | undefined
@@ -345,6 +351,104 @@ function chapterBlocks(ch: ChapterNotes) {
   return blocks
 }
 
+function blockGalleryId(block: NoteBlock) {
+  return block.kind === 'highlight' ? block.highlight.bookmarkId : `review:${block.review.reviewId}`
+}
+
+function setNoteEl(id: string, el: Element | null) {
+  if (el instanceof HTMLElement) noteEls.set(id, el)
+  else noteEls.delete(id)
+}
+
+const gallery = computed((): RandomHighlight[] => {
+  if (!data.value) return []
+  const bookId = String(route.params.bookId || data.value.bookId || '')
+  const items: RandomHighlight[] = []
+  for (const ch of data.value.chapters) {
+    for (const block of chapterBlocks(ch)) {
+      if (block.kind === 'highlight') {
+        items.push({
+          bookmarkId: block.highlight.bookmarkId,
+          bookId,
+          markText: block.highlight.markText,
+          createTime: block.highlight.createTime,
+          title: title.value,
+          author: author.value,
+          cover: cover.value,
+          starred: block.highlight.starred,
+          chapterTitle: ch.title,
+        })
+      } else {
+        items.push({
+          bookmarkId: `review:${block.review.reviewId}`,
+          bookId,
+          markText: (block.review.abstract || block.review.content || '').trim(),
+          createTime: block.review.createTime,
+          title: title.value,
+          author: author.value,
+          cover: cover.value,
+          starred: false,
+          chapterTitle: ch.title,
+        })
+      }
+    }
+  }
+  return items
+})
+
+const focusedItem = computed(() => {
+  if (focusedNote.value == null) return null
+  return gallery.value[focusedNote.value] ?? null
+})
+const lightboxOpen = computed(() => focusedItem.value != null)
+const lightboxSourceEl = computed(() => {
+  const item = focusedItem.value
+  if (!item) return null
+  return noteEls.get(item.bookmarkId) ?? null
+})
+const focusedCanStar = computed(() => !!focusedItem.value && !focusedItem.value.bookmarkId.startsWith('review:'))
+
+function openNote(block: NoteBlock, event: MouseEvent) {
+  if (focusedNote.value != null) return
+  const id = blockGalleryId(block)
+  const i = gallery.value.findIndex((item) => item.bookmarkId === id)
+  if (i < 0) return
+  lastNoteFocus = document.activeElement instanceof HTMLElement ? document.activeElement : (event.currentTarget as HTMLElement)
+  focusedNote.value = i
+}
+
+function closeNoteLightbox() {
+  focusedNote.value = null
+  lastNoteFocus?.focus()
+}
+
+function goNote(delta: number) {
+  const n = gallery.value.length
+  if (focusedNote.value == null || n < 2) return
+  focusedNote.value = (focusedNote.value + delta + n) % n
+}
+
+function cycleNoteDisplay() {
+  highlightDisplay.value = nextHighlightDisplay(highlightDisplay.value)
+}
+
+function onLightboxStarred(bookmarkId: string, starred: boolean) {
+  if (!data.value) return
+  for (const ch of data.value.chapters) {
+    const hit = ch.highlights.find((h) => h.bookmarkId === bookmarkId)
+    if (hit) hit.starred = starred
+  }
+}
+
+function onNoteCardKey(block: NoteBlock, event: KeyboardEvent) {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  const i = gallery.value.findIndex((item) => item.bookmarkId === blockGalleryId(block))
+  if (i < 0) return
+  lastNoteFocus = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  focusedNote.value = i
+}
+
 watch(cardOpen, (open) => {
   if (open) window.addEventListener('keydown', onOverlayKey)
   else window.removeEventListener('keydown', onOverlayKey)
@@ -358,6 +462,7 @@ watch(
     data.value = null
     coverBroken.value = false
     cardOpen.value = false
+    focusedNote.value = null
     lockScroll(false)
     try {
       data.value = await fetchNotes(bookId)
@@ -373,6 +478,16 @@ watch(
   },
   { immediate: true },
 )
+
+onMounted(() => {
+  void fetchSettings()
+    .then((s) => {
+      highlightDisplay.value = normalizeHighlightDisplay(s.highlightDisplay)
+    })
+    .catch(() => {
+      highlightDisplay.value = 'card'
+    })
+})
 </script>
 
 <template>
@@ -459,8 +574,14 @@ watch(
                 v-for="block in chapterBlocks(ch)"
                 :key="block.key"
                 :id="block.kind === 'highlight' ? 'hl-' + block.highlight.bookmarkId : undefined"
+                :ref="(el) => setNoteEl(blockGalleryId(block), el as Element | null)"
                 class="note-card"
                 :class="block.kind === 'highlight' ? 'is-mark' : 'is-idea'"
+                role="button"
+                tabindex="0"
+                :aria-label="block.kind === 'highlight' ? '展开划线卡片' : '展开想法卡片'"
+                @click="openNote(block, $event)"
+                @keydown="onNoteCardKey(block, $event)"
               >
                 <template v-if="block.kind === 'highlight'">
                   <header class="note-meta">
@@ -564,6 +685,20 @@ watch(
             </div>
           </article>
         </div>
+      </Teleport>
+      <Teleport to="body">
+        <HighlightLightbox
+          v-if="lightboxOpen && focusedItem"
+          :display="highlightDisplay"
+          :item="focusedItem"
+          :total="gallery.length"
+          :source-el="lightboxSourceEl"
+          :can-star="focusedCanStar"
+          @closed="closeNoteLightbox"
+          @go="goNote"
+          @starred="onLightboxStarred"
+          @cycle-display="cycleNoteDisplay"
+        />
       </Teleport>
     </template>
   </section>

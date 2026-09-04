@@ -6,12 +6,16 @@ import { downloadHighlightCard, highlightExportFilename } from './exportCard'
 import { setHighlightStarred } from '../api'
 import { HIGHLIGHT_DISPLAYS, nextHighlightDisplay, type HighlightDisplay } from './types'
 
-const props = defineProps<{
-  display: HighlightDisplay
-  item: RandomHighlight
-  total: number
-  sourceEl: HTMLElement | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    display: HighlightDisplay
+    item: RandomHighlight
+    total: number
+    sourceEl: HTMLElement | null
+    canStar?: boolean
+  }>(),
+  { canStar: true },
+)
 
 const emit = defineEmits<{
   closed: []
@@ -116,7 +120,7 @@ async function requestClose() {
 }
 
 async function toggleStar() {
-  if (starring.value || motionLock.value || !props.item.bookmarkId) return
+  if (!props.canStar || starring.value || motionLock.value || !props.item.bookmarkId) return
   starring.value = true
   const next = !props.item.starred
   try {
@@ -235,6 +239,7 @@ watch(
         </svg>
       </button>
       <button
+        v-if="canStar"
         class="slip-lightbox-share"
         type="button"
         :class="{ on: item.starred }"
