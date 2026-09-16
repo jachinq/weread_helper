@@ -1271,6 +1271,56 @@ a {
   flex-shrink: 0;
 }
 
+.hl-tile-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hl-redraw-one {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-2) 35%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  color: var(--cinnabar, var(--color-accent-2));
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.hl-redraw-one:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.hl-redraw-one.is-waiting:disabled {
+  cursor: wait;
+}
+
+.home-slot-hint {
+  position: absolute;
+  z-index: 2;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--cinnabar);
+}
+
 .home-spread {
   display: grid;
   grid-template-columns: 1fr;
@@ -1509,6 +1559,7 @@ a {
 }
 
 .hl-tile {
+  position: relative;
   display: block;
   width: 100%;
   padding: 0;
@@ -1731,6 +1782,7 @@ body.slip-lightbox-lock {
 
 .slip-lightbox-close,
 .slip-lightbox-share,
+.slip-lightbox-redraw,
 .slip-lightbox-nav {
   padding: 0;
   width: 44px;
@@ -1744,8 +1796,19 @@ body.slip-lightbox-lock {
   cursor: pointer;
 }
 
+.slip-lightbox-redraw {
+  width: auto;
+  padding: 0 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
 .slip-lightbox-close:hover,
 .slip-lightbox-share:hover:not(:disabled),
+.slip-lightbox-redraw:hover:not(:disabled),
 .slip-lightbox-nav:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-accent-2) 18%, transparent);
   border-color: var(--gold);
@@ -1764,7 +1827,8 @@ body.slip-lightbox-lock {
   height: 20px;
 }
 
-.slip-lightbox-share:disabled {
+.slip-lightbox-share:disabled,
+.slip-lightbox-redraw:disabled {
   opacity: 0.45;
   cursor: wait;
 }

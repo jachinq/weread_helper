@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { fetchOnThisDayHighlights, fetchRandomHighlights, fetchSettings, refreshRandomHighlights } from '../api'
+import { fetchOnThisDayHighlights, fetchRandomHighlights, fetchSettings, redrawRandomHighlight, refreshRandomHighlights } from '../api'
 import HighlightFigure from '../highlights/HighlightFigure.vue'
 import HighlightLightbox from '../highlights/HighlightLightbox.vue'
 import { HIGHLIGHT_DISPLAYS, nextHighlightDisplay, normalizeHighlightDisplay, type HighlightDisplay } from '../highlights/types'
@@ -11,6 +11,10 @@ type LightboxKind = 'today' | 'otd'
 const pool = ref<RandomHighlight[]>([])
 const otdPool = ref<RandomHighlight[]>([])
 const loading = ref(false)
+const pickBusy = ref(false)
+const redrawPos = ref<number | null>(null)
+const redrawError = ref('')
+const redrawErrorPos = ref<number | null>(null)
 const error = ref('')
 const displayCount = 5
 const drawKey = ref(0)
@@ -39,9 +43,11 @@ const sourceEl = computed(() => {
 })
 
 async function load(refresh = false) {
+  if (pickBusy.value) return
   if (lightboxKind.value === 'today') onClosed()
   loading.value = true
   error.value = ''
+  redrawError.value = ''
   try {
     const data = refresh ? await refreshRandomHighlights() : await fetchRandomHighlights()
     pool.value = data.items || []
@@ -50,6 +56,23 @@ async function load(refresh = false) {
     error.value = e instanceof Error ? e.message : '加载失败'
   } finally {
     loading.value = false
+  }
+}
+
+async function redrawSlot(pos: number) {
+  if (pickBusy.value || loading.value) return
+  pickBusy.value = true
+  redrawPos.value = pos
+  redrawError.value = ''
+  try {
+    const data = await redrawRandomHighlight(pos)
+    pool.value = data.items || []
+  } catch (e) {
+    redrawError.value = e instanceof Error ? e.message : '没有更多可换的划线'
+    redrawErrorPos.value = pos
+  } finally {
+    pickBusy.value = false
+    redrawPos.value = null
   }
 }
 
@@ -141,7 +164,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="home" :aria-busy="loading">
+  <section class="home" :aria-busy="loading || pickBusy">
     <div v-if="otdItems.length" class="home-otd">
       <header class="home-head">
         <div>
@@ -173,7 +196,7 @@ onUnmounted(() => {
         <h2 class="page-title">今日摘抄</h2>
         <p class="muted">从历史划线里抽出几条，首页与点开均为「{{ displayLabel }}」样式，左右可翻下一张</p>
       </div>
-      <button class="btn home-redraw" type="button" :disabled="loading" @click="load(true)">
+      <button class="btn home-redraw" type="button" :disabled="loading || pickBusy" @click="load(true)">
         {{ loading ? '抽取中…' : '换一批' }}
       </button>
     </header>
@@ -199,19 +222,34 @@ onUnmounted(() => {
     </p>
 
     <div v-else class="home-spread" :key="drawKey" :data-count="items.length" :data-display="display">
-      <button
+      <div
         v-for="(h, i) in items"
-        :key="h.bookmarkId"
+        :key="'today-' + i"
         :ref="(el) => setSlipEl(todaySlipEls, i, el as Element | null)"
         class="hl-tile"
         :class="['slip-' + ((i % 5) + 1), { 'is-origin': lightboxKind === 'today' && focused === i }]"
         :style="tileStyle(i, drawKey)"
-        type="button"
-        :aria-label="`展开《${h.title || '未命名'}》的划线`"
-        @click="openAt('today', i)"
       >
-        <HighlightFigure :item="h" :display="display" variant="tile" />
-      </button>
+        <button
+          class="hl-tile-open"
+          type="button"
+          :aria-label="`展开《${h.title || '未命名'}》的划线`"
+          @click="openAt('today', i)"
+        >
+          <HighlightFigure :item="h" :display="display" variant="tile" />
+        </button>
+        <button
+          class="hl-redraw-one"
+          type="button"
+          :class="{ 'is-waiting': redrawPos === i }"
+          :disabled="loading || pickBusy"
+          :aria-label="`换这条摘抄，第 ${i + 1} 位`"
+          @click="redrawSlot(i)"
+        >
+          {{ redrawPos === i ? '抽取中…' : '换这条' }}
+        </button>
+        <p v-if="redrawError && redrawErrorPos === i" class="home-slot-hint" role="alert">{{ redrawError }}</p>
+      </div>
     </div>
 
     <Teleport to="body">
@@ -221,10 +259,14 @@ onUnmounted(() => {
         :item="focusedItem"
         :total="activeItems.length"
         :source-el="sourceEl"
+        :can-redraw="lightboxKind === 'today'"
+        :redrawing="lightboxKind === 'today' && redrawPos === focused"
+        :redraw-error="lightboxKind === 'today' && redrawErrorPos === focused ? redrawError : ''"
         @closed="onClosed"
         @go="go"
         @starred="onStarred"
         @cycle-display="cycleDisplay"
+        @redraw="focused != null && redrawSlot(focused)"
       />
     </Teleport>
   </section>

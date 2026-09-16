@@ -3,6 +3,7 @@ package store
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -165,5 +166,56 @@ func TestDailyPicksPersistAcrossOpen(t *testing.T) {
 	_, found, err = st.LoadDailyPicks("2026-08-24")
 	if err != nil || found {
 		t.Fatalf("other day should miss, found=%v err=%v", found, err)
+	}
+}
+
+func seedHighlights(t *testing.T, st *Store, texts ...string) {
+	t.Helper()
+	book := &Book{BookID: "b1", Title: "书", Author: "作者", InNotebooks: true, Sort: 1}
+	if err := st.UpsertNotebook(book); err != nil {
+		t.Fatal(err)
+	}
+	hls := make([]Highlight, 0, len(texts))
+	for i, text := range texts {
+		hls = append(hls, Highlight{
+			BookmarkID: "h" + strconv.Itoa(i+1),
+			BookID:     "b1",
+			ChapterUID: 1,
+			MarkText:   text,
+			CreateTime: int64(i + 1),
+		})
+	}
+	err := st.ReplaceNotes("b1",
+		[]Chapter{{BookID: "b1", ChapterUID: 1, Title: "章", ChapterIdx: 1}},
+		hls,
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRandomHighlightsExceptSkipsCurrentSet(t *testing.T) {
+	st := tempStore(t)
+	seedHighlights(t, st, "一", "二", "三", "四", "五", "六")
+	exclude := []string{"h1", "h2", "h3", "h4", "h5"}
+	got, err := st.RandomHighlightsExcept(exclude, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].BookmarkID != "h6" {
+		t.Fatalf("want h6, got %+v", got)
+	}
+}
+
+func TestRandomHighlightsExceptEmptyWhenPoolExhausted(t *testing.T) {
+	st := tempStore(t)
+	seedHighlights(t, st, "一", "二", "三")
+	got, err := st.RandomHighlightsExcept([]string{"h1", "h2", "h3"}, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("want empty, got %+v", got)
 	}
 }

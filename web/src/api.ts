@@ -40,6 +40,21 @@ export function refreshRandomHighlights() {
   })
 }
 
+export function redrawRandomHighlight(pos: number) {
+  return fetch('/api/highlights/random/redraw', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pos }),
+  }).then(async (res) => {
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const msg = (data as { error?: string }).error || `请求失败 (${res.status})`
+      throw new Error(msg)
+    }
+    return data as RandomHighlightsResponse
+  })
+}
+
 export function fetchNotebooks(count = 40, lastSort?: number, query?: string) {
   const q = new URLSearchParams({ count: String(count) })
   if (lastSort) q.set('lastSort', String(lastSort))

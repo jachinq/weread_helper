@@ -41,6 +41,7 @@ func (s *Server) Register(r *gin.Engine) {
 	api.GET("/notebooks", s.notebooks)
 	api.GET("/highlights/random", s.randomHighlights)
 	api.POST("/highlights/random", s.refreshHighlights)
+	api.POST("/highlights/random/redraw", s.redrawHighlights)
 	api.GET("/highlights/on-this-day", s.onThisDayHighlights)
 	api.GET("/highlights/starred", s.starredHighlights)
 	api.PUT("/highlights/star", s.setHighlightStar)
@@ -72,6 +73,57 @@ func (s *Server) randomHighlights(c *gin.Context) {
 
 func (s *Server) refreshHighlights(c *gin.Context) {
 	s.writePicks(c, true)
+}
+
+func (s *Server) redrawHighlights(c *gin.Context) {
+	var body struct {
+		Pos *int `json:"pos"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || body.Pos == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求体"})
+		return
+	}
+	pos := *body.Pos
+
+	s.pickMu.Lock()
+	defer s.pickMu.Unlock()
+
+	items, date, err := s.visibleTodayPicksLocked()
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	if len(items) == 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "今日摘抄尚未生成"})
+		return
+	}
+	if pos < 0 || pos >= len(items) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "摘抄位无效"})
+		return
+	}
+	exclude := make([]string, 0, len(items))
+	for _, h := range items {
+		exclude = append(exclude, h.BookmarkID)
+	}
+	picked, err := s.store.RandomHighlightsExcept(exclude, 1)
+	if err != nil {
+		writeErr(c, err)
+		return
+	}
+	if len(picked) == 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "没有更多可换的划线"})
+		return
+	}
+	next := make([]store.RandomHighlight, len(items))
+	copy(next, items)
+	next[pos] = picked[0]
+	if err := s.store.SaveDailyPicks(date, next); err != nil {
+		writeErr(c, err)
+		return
+	}
+	s.pickDate = date
+	s.pickItems = next
+	c.JSON(http.StatusOK, gin.H{"date": date, "items": highlightItemsJSON(next)})
 }
 
 func highlightItemsJSON(items []store.RandomHighlight) []gin.H {
@@ -127,6 +179,23 @@ func (s *Server) onThisDayPicks() ([]store.RandomHighlight, string, error) {
 	s.otdDate = today
 	s.otdItems = items
 	return items, today, nil
+}
+
+func (s *Server) visibleTodayPicksLocked() ([]store.RandomHighlight, string, error) {
+	today := time.Now().In(store.Shanghai()).Format("2006-01-02")
+	if s.pickDate == today && s.pickItems != nil {
+		return s.pickItems, today, nil
+	}
+	stored, found, err := s.store.LoadDailyPicks(today)
+	if err != nil {
+		return nil, today, err
+	}
+	if found && len(stored) > 0 {
+		s.pickDate = today
+		s.pickItems = stored
+		return stored, today, nil
+	}
+	return nil, today, nil
 }
 
 func (s *Server) todayPicks(refresh bool) ([]store.RandomHighlight, string, error) {

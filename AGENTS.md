@@ -25,6 +25,7 @@
 
 - 服务端按上海时区日期缓存当日 5 条划线（写入 SQLite `daily_highlight_picks`）；当日首次 GET 自动抽取，之后返回同一批。
 - 「换一批」走 POST 覆盖当日库内缓存。进程重启后同一天仍读库，不重新抽。
+- 「换这条」按摘抄位重抽一条：其余位不变，立刻写回当日缓存；新划线避开当日已出现的全部 `bookmarkId`，抽不出则失败且不改库。
 - 前端展示这 5 条（原文、书名、作者、划线日期），不按屏宽裁剪条数。
 - 「那年今日」：按上海时区匹配往年同月同日划线，最多 5 条（`create_time` 近者优先），进程内按日缓存；无匹配则首页不展示该版块。
 - 列表与点开展示形态一致，可在设置里配置（`highlightDisplay`）：藏书票 / 海报 / 阅读 / 拍立得 / 分享图，默认藏书票。首页网格按形态分开：藏书票散落、海报展览墙、阅读单栏、拍立得相纸桌、分享图方格。
@@ -63,6 +64,7 @@
 | GET | `/api/export?format=` | 导出全部有笔记的书 |
 | GET | `/api/highlights/random` | 当日摘抄（无当日记录则抽 5 条写入 SQLite） |
 | POST | `/api/highlights/random` | 换一批，覆盖当日库内缓存 |
+| POST | `/api/highlights/random/redraw` | 重抽指定摘抄位（JSON `{ "pos": 0 }`）；成功仍返回全日 `{ date, items }` |
 | GET | `/api/highlights/on-this-day` | 那年今日（往年同月同日划线，最多 5 条，按日缓存） |
 | GET | `/api/books/:bookId` | 书籍信息 + 阅读进度（本地） |
 | GET | `/api/books/:bookId/notes` | 聚合章节、划线、想法（本地） |

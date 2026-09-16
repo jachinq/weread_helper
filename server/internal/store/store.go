@@ -431,15 +431,28 @@ const randomHighlightSelect = `h.bookmark_id, h.book_id, h.chapter_uid, h.mark_t
        CASE WHEN s.bookmark_id IS NULL THEN 0 ELSE 1 END`
 
 func (s *Store) RandomHighlights(limit int) ([]RandomHighlight, error) {
+	return s.RandomHighlightsExcept(nil, limit)
+}
+
+func (s *Store) RandomHighlightsExcept(exclude []string, limit int) ([]RandomHighlight, error) {
 	limit = clampHighlightLimit(limit)
-	rows, err := s.DB.Query(`
-SELECT `+randomHighlightSelect+`
+	q := `
+SELECT ` + randomHighlightSelect + `
 FROM highlights h
 JOIN books b ON b.book_id = h.book_id
 LEFT JOIN starred_highlights s ON s.bookmark_id = h.bookmark_id
-WHERE TRIM(h.mark_text) != ''
-ORDER BY RANDOM()
-LIMIT ?`, limit)
+WHERE TRIM(h.mark_text) != ''`
+	args := make([]any, 0, len(exclude)+1)
+	if len(exclude) > 0 {
+		ph := strings.Repeat("?,", len(exclude))
+		q += ` AND h.bookmark_id NOT IN (` + ph[:len(ph)-1] + `)`
+		for _, id := range exclude {
+			args = append(args, id)
+		}
+	}
+	q += ` ORDER BY RANDOM() LIMIT ?`
+	args = append(args, limit)
+	rows, err := s.DB.Query(q, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -13,8 +13,11 @@ const props = withDefaults(
     total: number
     sourceEl: HTMLElement | null
     canStar?: boolean
+    canRedraw?: boolean
+    redrawing?: boolean
+    redrawError?: string
   }>(),
-  { canStar: true },
+  { canStar: true, canRedraw: false, redrawing: false, redrawError: '' },
 )
 
 const emit = defineEmits<{
@@ -22,6 +25,7 @@ const emit = defineEmits<{
   go: [delta: number]
   starred: [bookmarkId: string, starred: boolean]
   cycleDisplay: []
+  redraw: []
 }>()
 
 const stageEl = ref<HTMLElement | null>(null)
@@ -239,6 +243,15 @@ watch(
         </svg>
       </button>
       <button
+        v-if="canRedraw"
+        class="slip-lightbox-redraw"
+        type="button"
+        :disabled="redrawing || exporting"
+        @click="emit('redraw')"
+      >
+        {{ redrawing ? '抽取中…' : '换这条' }}
+      </button>
+      <button
         v-if="canStar"
         class="slip-lightbox-share"
         type="button"
@@ -300,6 +313,6 @@ watch(
         </div>
       </Transition>
     </div>
-    <p class="slip-lightbox-hint">{{ exportHint || '左右滑动或用方向键切换 · Esc 关闭' }}</p>
+    <p class="slip-lightbox-hint">{{ exportHint || redrawError || '左右滑动或用方向键切换 · Esc 关闭' }}</p>
   </div>
 </template>
