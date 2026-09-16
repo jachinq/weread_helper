@@ -1309,6 +1309,24 @@ a {
   cursor: wait;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .home-spread .hl-redraw-one {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.16s ease;
+  }
+
+  .home-spread .hl-tile:is(:hover, :focus-within) .hl-redraw-one,
+  .home-spread .hl-redraw-one.is-waiting {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .home-spread .hl-tile:is(:hover, :focus-within) .hl-redraw-one:disabled:not(.is-waiting) {
+    opacity: 0.55;
+  }
+}
+
 .home-slot-hint {
   position: absolute;
   z-index: 2;
